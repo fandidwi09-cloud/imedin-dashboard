@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Activity, Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import heroVideo from '/videos/hero-logistics.mp4';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -50,7 +51,7 @@ export default function Login() {
             playsInline
             className="w-full h-full object-cover opacity-30"
           >
-            <source src="/imedin-dashboard/videos/hero-logistics.mp4" type="video/mp4" />
+            <source src={heroVideo} type="video/mp4" />
           </video>
           <div className="absolute inset-0 bg-gradient-to-b from-[#1e2022]/60 via-[#1e2022]/40 to-[#1e2022]/80" />
         </div>

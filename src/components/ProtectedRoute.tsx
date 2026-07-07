@@ -5,9 +5,10 @@ import type { UserRole } from '@/types';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedRoles?: UserRole[];
+  requireAuth?: boolean; // kalau true, wajib login. kalau false, visitor boleh akses
 }
 
-export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, allowedRoles, requireAuth = false }: ProtectedRouteProps) {
   const { isAuthenticated, hasRole, loading } = useAuth();
 
   if (loading) {
@@ -21,12 +22,19 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
     );
   }
 
-  if (!isAuthenticated) {
+  // Kalau halaman butuh login dan belum login → redirect ke login
+  if (requireAuth && !isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && !hasRole(allowedRoles)) {
+  // Kalau halaman butuh role tertentu dan tidak punya role → redirect ke home
+  if (allowedRoles && isAuthenticated && !hasRole(allowedRoles)) {
     return <Navigate to="/" replace />;
+  }
+
+  // Kalau halaman butuh role tertentu dan belum login → redirect ke login
+  if (allowedRoles && !isAuthenticated) {
+    return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;

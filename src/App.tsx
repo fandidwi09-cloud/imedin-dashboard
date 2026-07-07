@@ -16,9 +16,12 @@ function AppRoutes() {
 
   return (
     <Routes>
+      {/* Halaman login - kalau sudah login redirect ke dashboard */}
       <Route path="/login" element={
         isAuthenticated ? <Navigate to="/" replace /> : <Login />
       } />
+
+      {/* Halaman publik - visitor bisa akses tanpa login */}
       <Route path="/" element={
         <ProtectedRoute>
           <Layout><Dashboard /></Layout>
@@ -29,6 +32,13 @@ function AppRoutes() {
           <Layout><MapView /></Layout>
         </ProtectedRoute>
       } />
+      <Route path="/service-history" element={
+        <ProtectedRoute>
+          <Layout><ServiceHistory /></Layout>
+        </ProtectedRoute>
+      } />
+
+      {/* Halaman khusus - wajib login dengan role tertentu */}
       <Route path="/units" element={
         <ProtectedRoute allowedRoles={['admin', 'teknisi']}>
           <Layout><Units /></Layout>
@@ -39,16 +49,12 @@ function AppRoutes() {
           <Layout><QRScanner /></Layout>
         </ProtectedRoute>
       } />
-      <Route path="/service-history" element={
-        <ProtectedRoute>
-          <Layout><ServiceHistory /></Layout>
-        </ProtectedRoute>
-      } />
       <Route path="/import-export" element={
         <ProtectedRoute allowedRoles={['admin', 'teknisi']}>
           <Layout><ImportExport /></Layout>
         </ProtectedRoute>
       } />
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

@@ -39,7 +39,7 @@ const roleConfig = {
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, hasRole } = useAuth();
+  const { user, logout, hasRole, isAuthenticated } = useAuth();
   const { alerts } = useDashboard();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -143,18 +143,31 @@ export default function Sidebar() {
         </div>
       )}
 
-      {/* Logout */}
+      {/* Logout / Login */}
       <div className="p-2 border-t border-[#33363a]">
-        <button
-          onClick={handleLogout}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[#a0a4a8] hover:text-white hover:bg-[#2c2f33] transition-all ${
-            isCollapsed ? 'justify-center' : ''
-          }`}
-          title={isCollapsed ? 'Logout' : undefined}
-        >
-          <LogOut size={20} />
-          {!isCollapsed && <span>Logout</span>}
-        </button>
+        {isAuthenticated ? (
+          <button
+            onClick={handleLogout}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[#a0a4a8] hover:text-white hover:bg-[#2c2f33] transition-all ${
+              isCollapsed ? 'justify-center' : ''
+            }`}
+            title={isCollapsed ? 'Logout' : undefined}
+          >
+            <LogOut size={20} />
+            {!isCollapsed && <span>Logout</span>}
+          </button>
+        ) : (
+          <button
+            onClick={() => handleNavigate('/login')}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm bg-[#3b82f6] text-white hover:bg-blue-600 transition-all ${
+              isCollapsed ? 'justify-center' : ''
+            }`}
+            title={isCollapsed ? 'Login' : undefined}
+          >
+            <LogOut size={20} className="rotate-180" />
+            {!isCollapsed && <span>Login</span>}
+          </button>
+        )}
       </div>
     </>
   );
