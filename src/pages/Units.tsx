@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useUnits } from '@/hooks/useUnits';
 import { useAuth } from '@/hooks/useAuth';
 import { unitsApi } from '@/services/api';
@@ -13,7 +13,9 @@ import {
   Package,
   ChevronLeft,
   ChevronRight,
-  AlertCircle
+  AlertCircle,
+  Navigation,
+  Loader2
 } from 'lucide-react';
 import type { Unit, UnitCategory, UnitStatus } from '@/types';
 
@@ -74,6 +76,72 @@ export default function Units() {
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Geocoding state
+  const [addressSearch, setAddressSearch] = useState('');
+  const [addressSuggestions, setAddressSuggestions] = useState<{ display_name: string; lat: string; lon: string; address: { state?: string; city?: string; town?: string; county?: string } }[]>([]);
+  const [geocodeLoading, setGeocodeLoading] = useState(false);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const addressDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const searchAddress = (query: string) => {
+    setAddressSearch(query);
+    if (addressDebounce.current) clearTimeout(addressDebounce.current);
+    if (!query || query.length < 3) { setAddressSuggestions([]); return; }
+    addressDebounce.current = setTimeout(async () => {
+      setGeocodeLoading(true);
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&countrycodes=id&limit=5`);
+        const data = await res.json();
+        setAddressSuggestions(data);
+      } catch { setAddressSuggestions([]); }
+      finally { setGeocodeLoading(false); }
+    }, 500);
+  };
+
+  const selectAddress = (item: typeof addressSuggestions[0]) => {
+    const city = item.address.city || item.address.town || item.address.county || '';
+    const province = item.address.state || '';
+    setFormData(prev => ({
+      ...prev,
+      address: item.display_name,
+      latitude: parseFloat(item.lat),
+      longitude: parseFloat(item.lon),
+      city: prev.city || city,
+      province: prev.province || province,
+    }));
+    setAddressSearch(item.display_name);
+    setAddressSuggestions([]);
+  };
+
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) { alert('Browser tidak mendukung GPS'); return; }
+    setGpsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`);
+          const data = await res.json();
+          const city = data.address?.city || data.address?.town || data.address?.county || '';
+          const province = data.address?.state || '';
+          setFormData(prev => ({
+            ...prev,
+            latitude,
+            longitude,
+            address: prev.address || data.display_name || '',
+            city: prev.city || city,
+            province: prev.province || province,
+          }));
+          setAddressSearch(data.display_name || '');
+        } catch {
+          setFormData(prev => ({ ...prev, latitude, longitude }));
+        }
+        setGpsLoading(false);
+      },
+      () => { alert('Gagal mendapatkan lokasi. Pastikan izin GPS diaktifkan.'); setGpsLoading(false); }
+    );
+  };
+
   const { hasRole } = useAuth();
   const isAdmin = hasRole('admin');
 
@@ -92,6 +160,8 @@ export default function Units() {
     setEditingUnit(null);
     setFormData({ ...emptyUnit });
     setFormError('');
+    setAddressSearch('');
+    setAddressSuggestions([]);
     setShowForm(true);
   };
 
@@ -99,6 +169,8 @@ export default function Units() {
     setEditingUnit(unit);
     setFormData({ ...unit });
     setFormError('');
+    setAddressSearch(unit.address || '');
+    setAddressSuggestions([]);
     setShowForm(true);
   };
 
@@ -468,28 +540,63 @@ export default function Units() {
               </div>
 
               <div className="border-t border-[#e6e6e8] pt-4">
-                <h3 className="text-sm font-semibold text-[#1d1d1d] uppercase tracking-wider mb-3">Koordinat & Status</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-[#8b8f95] mb-1">Latitude</label>
+                <h3 className="text-sm font-semibold text-[#1d1d1d] uppercase tracking-wider mb-3">Lokasi & Status</h3>
+
+                {/* Geocoding input */}
+                <div className="mb-3">
+                  <label className="block text-xs font-medium text-[#8b8f95] mb-1">Cari Alamat atau Gunakan GPS</label>
+                  <div className="relative">
+                    <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8b8f95]" />
                     <input
-                      type="number"
-                      step="any"
-                      value={formData.latitude}
-                      onChange={e => setFormData({ ...formData, latitude: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6]"
+                      type="text"
+                      value={addressSearch}
+                      onChange={e => searchAddress(e.target.value)}
+                      placeholder="Ketik alamat... (min. 3 karakter)"
+                      className="w-full pl-9 pr-28 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/15"
                     />
+                    <button
+                      type="button"
+                      onClick={useCurrentLocation}
+                      disabled={gpsLoading}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1 px-2 py-1 bg-[#3b82f6] text-white rounded text-xs hover:bg-blue-600 transition-colors disabled:opacity-50"
+                    >
+                      {gpsLoading ? <Loader2 size={12} className="animate-spin" /> : <Navigation size={12} />}
+                      GPS
+                    </button>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-[#8b8f95] mb-1">Longitude</label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={formData.longitude}
-                      onChange={e => setFormData({ ...formData, longitude: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6]"
-                    />
+
+                  {/* Suggestions dropdown */}
+                  {(geocodeLoading || addressSuggestions.length > 0) && (
+                    <div className="absolute z-10 mt-1 w-full max-w-[calc(100%-3rem)] bg-white border border-[#e6e6e8] rounded-lg shadow-lg overflow-hidden">
+                      {geocodeLoading ? (
+                        <div className="flex items-center gap-2 px-3 py-2 text-sm text-[#8b8f95]">
+                          <Loader2 size={14} className="animate-spin" /> Mencari...
+                        </div>
+                      ) : (
+                        addressSuggestions.map((item, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => selectAddress(item)}
+                            className="w-full text-left px-3 py-2 text-sm text-[#1d1d1d] hover:bg-blue-50 border-b border-[#f7f7f5] last:border-0 transition-colors"
+                          >
+                            <span className="line-clamp-1">{item.display_name}</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Koordinat hasil geocoding — readonly, tampil sebagai info */}
+                {(formData.latitude !== 0 || formData.longitude !== 0) && (
+                  <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-700">
+                    <MapPin size={14} />
+                    Koordinat: {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
                   </div>
+                )}
+
+                <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-[#8b8f95] mb-1">Installation Date</label>
                     <input

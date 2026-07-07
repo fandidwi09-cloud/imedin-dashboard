@@ -133,6 +133,50 @@ const saveMockUnits = (units: Unit[]) => localStorage.setItem('imedin_units', JS
 const saveMockServices = (services: ServiceRecord[]) => localStorage.setItem('imedin_services', JSON.stringify(services));
 
 // ============================================================
+// Field mapper: konversi PascalCase dari GAS ke camelCase frontend
+// ============================================================
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mapUnit = (raw: any): Unit => ({
+  id: raw.ID || raw.id || '',
+  serialNumber: raw.SerialNumber || raw.serialNumber || '',
+  productName: raw.ProductName || raw.productName || '',
+  category: (raw.Category || raw.category || 'other') as Unit['category'],
+  model: raw.Model || raw.model || '',
+  manufacturer: raw.Manufacturer || raw.manufacturer || '',
+  customerName: raw.CustomerName || raw.customerName || '',
+  customerPhone: raw.CustomerPhone || raw.customerPhone || '',
+  province: raw.Province || raw.province || '',
+  city: raw.City || raw.city || '',
+  address: raw.Address || raw.address || '',
+  latitude: parseFloat(raw.Latitude ?? raw.latitude ?? 0),
+  longitude: parseFloat(raw.Longitude ?? raw.longitude ?? 0),
+  installationDate: (raw.InstallationDate || raw.installationDate || '').toString().split('T')[0],
+  warrantyEndDate: (raw.WarrantyEndDate || raw.warrantyEndDate || '').toString().split('T')[0],
+  nextMaintenanceDate: (raw.NextMaintenanceDate || raw.nextMaintenanceDate || '').toString().split('T')[0],
+  lastServiceDate: (raw.LastServiceDate || raw.lastServiceDate || '').toString().split('T')[0],
+  status: (raw.Status || raw.status || 'active') as Unit['status'],
+  notes: raw.Notes || raw.notes || '',
+  createdAt: raw.CreatedAt || raw.createdAt || '',
+  updatedAt: raw.UpdatedAt || raw.updatedAt || '',
+});
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mapService = (raw: any): ServiceRecord => ({
+  id: raw.ID || raw.id || '',
+  unitId: raw.UnitID || raw.unitId || '',
+  serialNumber: raw.SerialNumber || raw.serialNumber || '',
+  serviceType: (raw.ServiceType || raw.serviceType || 'routine') as ServiceRecord['serviceType'],
+  serviceDate: (raw.ServiceDate || raw.serviceDate || '').toString().split('T')[0],
+  technicianName: raw.TechnicianName || raw.technicianName || '',
+  description: raw.Description || raw.description || '',
+  partsReplaced: raw.PartsReplaced || raw.partsReplaced || '',
+  cost: parseFloat(raw.Cost ?? raw.cost ?? 0),
+  nextServiceDate: (raw.NextServiceDate || raw.nextServiceDate || '').toString().split('T')[0],
+  notes: raw.Notes || raw.notes || '',
+  createdAt: raw.CreatedAt || raw.createdAt || '',
+});
+
+// ============================================================
 // Auth API
 // ============================================================
 export const authApi = {
@@ -168,6 +212,37 @@ export const authApi = {
     }
     
     return result;
+  },
+
+  checkEmail: async (email: string): Promise<ApiResponse<{ name: string }>> => {
+    if (USE_MOCK) {
+      await new Promise(r => setTimeout(r, 400));
+      const users = getMockUsers();
+      const user = users.find(u => u.email === email);
+      if (user) return { success: true, data: { name: user.name }, message: 'Email ditemukan' };
+      return { success: false, message: 'Email tidak terdaftar' };
+    }
+    const params = new URLSearchParams({ action: 'checkEmail', email });
+    const response = await fetch(`${GAS_BASE_URL}?${params}`);
+    return response.json();
+  },
+
+  resetPin: async (email: string, newPin: string): Promise<ApiResponse<void>> => {
+    if (USE_MOCK) {
+      await new Promise(r => setTimeout(r, 500));
+      const users = getMockUsers();
+      const idx = users.findIndex(u => u.email === email);
+      if (idx === -1) return { success: false, message: 'Email tidak ditemukan' };
+      users[idx].pin = newPin;
+      localStorage.setItem('imedin_users', JSON.stringify(users));
+      return { success: true, message: 'PIN berhasil direset' };
+    }
+    const response = await fetch(`${GAS_BASE_URL}?action=resetPin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, newPin })
+    });
+    return response.json();
   },
 
   logout: (): void => {
@@ -216,7 +291,11 @@ export const unitsApi = {
     }
     const params = new URLSearchParams({ action: 'getUnits', ...filters });
     const response = await fetch(`${GAS_BASE_URL}?${params}`);
-    return response.json();
+    const result = await response.json();
+    if (result.success && result.data) {
+      return { ...result, data: result.data.map(mapUnit) };
+    }
+    return result;
   },
 
   getById: async (id: string): Promise<ApiResponse<Unit>> => {
@@ -227,7 +306,11 @@ export const unitsApi = {
       return unit ? { success: true, data: unit } : { success: false, message: 'Unit tidak ditemukan' };
     }
     const response = await fetch(`${GAS_BASE_URL}?action=getUnit&id=${id}`);
-    return response.json();
+    const result = await response.json();
+    if (result.success && result.data) {
+      return { ...result, data: mapUnit(result.data) };
+    }
+    return result;
   },
 
   getBySerialNumber: async (serialNumber: string): Promise<ApiResponse<Unit>> => {
@@ -238,7 +321,11 @@ export const unitsApi = {
       return unit ? { success: true, data: unit } : { success: false, message: 'Unit tidak ditemukan' };
     }
     const response = await fetch(`${GAS_BASE_URL}?action=getUnitBySerial&serial=${serialNumber}`);
-    return response.json();
+    const result = await response.json();
+    if (result.success && result.data) {
+      return { ...result, data: mapUnit(result.data) };
+    }
+    return result;
   },
 
   create: async (unit: Omit<Unit, 'id' | 'createdAt' | 'updatedAt'>): Promise<ApiResponse<Unit>> => {
@@ -305,7 +392,11 @@ export const servicesApi = {
     }
     const params = unitId ? `?action=getServices&unitId=${unitId}` : '?action=getServices';
     const response = await fetch(`${GAS_BASE_URL}${params}`);
-    return response.json();
+    const result = await response.json();
+    if (result.success && result.data) {
+      return { ...result, data: result.data.map(mapService) };
+    }
+    return result;
   },
 
   getBySerialNumber: async (serialNumber: string): Promise<ApiResponse<ServiceRecord[]>> => {
@@ -315,7 +406,11 @@ export const servicesApi = {
       return { success: true, data: services.sort((a, b) => new Date(b.serviceDate).getTime() - new Date(a.serviceDate).getTime()) };
     }
     const response = await fetch(`${GAS_BASE_URL}?action=getServicesBySerial&serial=${serialNumber}`);
-    return response.json();
+    const result = await response.json();
+    if (result.success && result.data) {
+      return { ...result, data: result.data.map(mapService) };
+    }
+    return result;
   },
 
   create: async (service: Omit<ServiceRecord, 'id' | 'createdAt'>): Promise<ApiResponse<ServiceRecord>> => {
@@ -405,7 +500,20 @@ export const dashboardApi = {
       };
     }
     const response = await fetch(`${GAS_BASE_URL}?action=getDashboardStats`);
-    return response.json();
+    const result = await response.json();
+    if (result.success && result.data) {
+      // Map nested units in upcomingMaintenance and warrantyExpiringUnits
+      return {
+        ...result,
+        data: {
+          ...result.data,
+          upcomingMaintenance: (result.data.upcomingMaintenance || []).map(mapUnit),
+          warrantyExpiringUnits: (result.data.warrantyExpiringUnits || []).map(mapUnit),
+          recentServices: (result.data.recentServices || []).map(mapService),
+        }
+      };
+    }
+    return result;
   },
 
   getAlerts: async (): Promise<ApiResponse<AlertItem[]>> => {
@@ -461,7 +569,17 @@ export const dashboardApi = {
       }) };
     }
     const response = await fetch(`${GAS_BASE_URL}?action=getAlerts`);
-    return response.json();
+    const result = await response.json();
+    if (result.success && result.data) {
+      return {
+        ...result,
+        data: result.data.map((a: AlertItem & { unit: unknown }) => ({
+          ...a,
+          unit: mapUnit(a.unit)
+        }))
+      };
+    }
+    return result;
   }
 };
 

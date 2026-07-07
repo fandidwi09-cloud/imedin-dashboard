@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { Activity, Eye, EyeOff, Mail, Lock } from 'lucide-react';
-import heroVideo from '/videos/hero-logistics.mp4';
+import { Activity, Eye, EyeOff, Mail, Lock, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import heroVideo from '@/assets/hero-logistics.mp4';
+import { authApi } from '@/services/api';
+
+type ForgotStep = 'email' | 'newpin' | 'done';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -12,6 +15,65 @@ export default function Login() {
   const [showPin, setShowPin] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // State untuk modal Lupa PIN
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotStep, setForgotStep] = useState<ForgotStep>('email');
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotName, setForgotName] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [newPinConfirm, setNewPinConfirm] = useState('');
+  const [showNewPin, setShowNewPin] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState('');
+
+  const handleForgotEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError('');
+    setForgotLoading(true);
+    try {
+      const result = await authApi.checkEmail(forgotEmail);
+      if (result.success && result.data) {
+        setForgotName(result.data.name);
+        setForgotStep('newpin');
+      } else {
+        setForgotError(result.message || 'Email tidak ditemukan');
+      }
+    } catch {
+      setForgotError('Terjadi kesalahan. Coba lagi.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleForgotReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError('');
+    if (newPin.length < 4) { setForgotError('PIN minimal 4 digit'); return; }
+    if (newPin !== newPinConfirm) { setForgotError('PIN tidak cocok'); return; }
+    setForgotLoading(true);
+    try {
+      const result = await authApi.resetPin(forgotEmail, newPin);
+      if (result.success) {
+        setForgotStep('done');
+      } else {
+        setForgotError(result.message || 'Gagal reset PIN');
+      }
+    } catch {
+      setForgotError('Terjadi kesalahan. Coba lagi.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const closeForgot = () => {
+    setShowForgot(false);
+    setForgotStep('email');
+    setForgotEmail('');
+    setNewPin('');
+    setNewPinConfirm('');
+    setForgotError('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +101,7 @@ export default function Login() {
   };
 
   return (
+    <>
     <div className="relative flex min-h-screen bg-[#1e2022]">
 
       {/* Video background — tampil di semua ukuran layar */}
@@ -177,7 +240,11 @@ export default function Login() {
               </form>
 
               <div className="mt-4 text-center">
-                <button className="text-sm text-[#8b8f95] hover:text-[#1d1d1d] transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setShowForgot(true)}
+                  className="text-sm text-[#8b8f95] hover:text-[#3b82f6] transition-colors"
+                >
                   Lupa PIN?
                 </button>
               </div>
@@ -206,5 +273,93 @@ export default function Login() {
         </div>
       </div>
     </div>
+
+      {/* Modal Lupa PIN */}
+      {showForgot && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+
+            {forgotStep === 'email' && (
+              <>
+                <button onClick={closeForgot} className="flex items-center gap-1 text-xs text-[#8b8f95] hover:text-[#1d1d1d] mb-4 transition-colors">
+                  <ArrowLeft size={14} /> Kembali ke Login
+                </button>
+                <h3 className="text-lg font-semibold text-[#1d1d1d] mb-1" style={{ fontFamily: 'Poppins, sans-serif' }}>Reset PIN</h3>
+                <p className="text-sm text-[#8b8f95] mb-5">Masukkan email yang terdaftar di sistem.</p>
+                {forgotError && <div className="mb-3 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">{forgotError}</div>}
+                <form onSubmit={handleForgotEmail} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium uppercase tracking-wider text-[#8b8f95] mb-1.5">Email</label>
+                    <div className="relative">
+                      <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8b8f95]" />
+                      <input type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)}
+                        placeholder="email@imedin.co.id" required
+                        className="w-full pl-9 pr-4 py-2.5 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/15 transition-all" />
+                    </div>
+                  </div>
+                  <button type="submit" disabled={forgotLoading}
+                    className="w-full py-2.5 bg-[#3b82f6] text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-all disabled:opacity-50">
+                    {forgotLoading ? 'Memeriksa...' : 'Lanjutkan'}
+                  </button>
+                </form>
+              </>
+            )}
+
+            {forgotStep === 'newpin' && (
+              <>
+                <button onClick={() => setForgotStep('email')} className="flex items-center gap-1 text-xs text-[#8b8f95] hover:text-[#1d1d1d] mb-4 transition-colors">
+                  <ArrowLeft size={14} /> Kembali
+                </button>
+                <h3 className="text-lg font-semibold text-[#1d1d1d] mb-1" style={{ fontFamily: 'Poppins, sans-serif' }}>PIN Baru</h3>
+                <p className="text-sm text-[#8b8f95] mb-1">Halo, <span className="font-medium text-[#1d1d1d]">{forgotName}</span>.</p>
+                <p className="text-sm text-[#8b8f95] mb-5">Masukkan PIN baru kamu.</p>
+                {forgotError && <div className="mb-3 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">{forgotError}</div>}
+                <form onSubmit={handleForgotReset} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium uppercase tracking-wider text-[#8b8f95] mb-1.5">PIN Baru</label>
+                    <div className="relative">
+                      <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8b8f95]" />
+                      <input type={showNewPin ? 'text' : 'password'} value={newPin} onChange={e => setNewPin(e.target.value)}
+                        placeholder="Min. 4 digit" maxLength={6} required
+                        className="w-full pl-9 pr-10 py-2.5 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/15 transition-all" />
+                      <button type="button" onClick={() => setShowNewPin(!showNewPin)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8b8f95]">
+                        {showNewPin ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium uppercase tracking-wider text-[#8b8f95] mb-1.5">Konfirmasi PIN</label>
+                    <div className="relative">
+                      <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8b8f95]" />
+                      <input type={showNewPin ? 'text' : 'password'} value={newPinConfirm} onChange={e => setNewPinConfirm(e.target.value)}
+                        placeholder="Ulangi PIN baru" maxLength={6} required
+                        className="w-full pl-9 pr-4 py-2.5 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/15 transition-all" />
+                    </div>
+                  </div>
+                  <button type="submit" disabled={forgotLoading}
+                    className="w-full py-2.5 bg-[#3b82f6] text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-all disabled:opacity-50">
+                    {forgotLoading ? 'Menyimpan...' : 'Reset PIN'}
+                  </button>
+                </form>
+              </>
+            )}
+
+            {forgotStep === 'done' && (
+              <div className="text-center py-4">
+                <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle2 size={36} className="text-emerald-500" />
+                </div>
+                <h3 className="text-lg font-semibold text-[#1d1d1d] mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>PIN Berhasil Direset!</h3>
+                <p className="text-sm text-[#8b8f95] mb-6">Silakan login dengan PIN baru kamu.</p>
+                <button onClick={closeForgot}
+                  className="w-full py-2.5 bg-[#3b82f6] text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-all">
+                  Login Sekarang
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
