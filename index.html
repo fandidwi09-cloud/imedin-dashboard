@@ -20,6 +20,14 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Handle redirect dari 404.html
+      var redirect = sessionStorage.getItem('redirectPath');
+      if (redirect) {
+        sessionStorage.removeItem('redirectPath');
+        window.history.replaceState(null, '', redirect);
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
