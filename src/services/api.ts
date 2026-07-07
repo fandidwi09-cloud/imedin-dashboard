@@ -3,7 +3,7 @@
 // ============================================================
 // Ganti URL ini dengan URL Web App Google Apps Script Anda setelah deploy
 
-const GAS_BASE_URL = 'https://script.google.com/macros/s/AKfycbxgvXQMaMWd8tgyb9tHdJIl5lqISgZpFvVTVTRTTuoehShMiz3yfm2kViCuVW7cZLJp/exec';
+const GAS_BASE_URL = 'https://script.google.com/macros/s/AKfycbwpQzt0VC_ymDcOY9gyLOhaygnyLIT6kuDemlUZMYJiCOZFn2c388p-k0jxfGa5xuOy/exec';
 
 // Untuk development/demo, gunakan localStorage sebagai mock database
 const USE_MOCK = false;
