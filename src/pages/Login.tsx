@@ -41,18 +41,18 @@ export default function Login() {
     <div className="flex min-h-screen bg-[#f7f7f5]">
       {/* Left Panel */}
       <div className="hidden lg:flex lg:w-[40%] bg-[#1e2022] flex-col relative overflow-hidden">
-        <div className="absolute inset-0 opacity-30">
-          <div className="absolute inset-0 bg-gradient-to-br from-[#3b82f6]/20 to-[#1e2022]" />
-          <svg className="w-full h-full" viewBox="0 0 400 600" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="200" cy="300" r="200" stroke="#3b82f6" strokeWidth="0.5" opacity="0.3" />
-            <circle cx="200" cy="300" r="150" stroke="#3b82f6" strokeWidth="0.5" opacity="0.2" />
-            <circle cx="200" cy="300" r="100" stroke="#3b82f6" strokeWidth="0.5" opacity="0.1" />
-            <rect x="50" y="100" width="80" height="120" rx="4" stroke="#a0a4a8" strokeWidth="0.5" opacity="0.2" />
-            <rect x="150" y="80" width="100" height="140" rx="4" stroke="#a0a4a8" strokeWidth="0.5" opacity="0.15" />
-            <rect x="270" y="120" width="80" height="100" rx="4" stroke="#a0a4a8" strokeWidth="0.5" opacity="0.2" />
-            <rect x="80" y="320" width="90" height="110" rx="4" stroke="#a0a4a8" strokeWidth="0.5" opacity="0.15" />
-            <rect x="220" y="300" width="100" height="130" rx="4" stroke="#a0a4a8" strokeWidth="0.5" opacity="0.2" />
-          </svg>
+        {/* Background video */}
+        <div className="absolute inset-0">
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover opacity-30"
+          >
+            <source src="./videos/hero-logistics.mp4" type="video/mp4" />
+          </video>
+          <div className="absolute inset-0 bg-gradient-to-b from-[#1e2022]/60 via-[#1e2022]/40 to-[#1e2022]/80" />
         </div>
         <div className="relative z-10 flex flex-col h-full p-10">
           <div className="flex items-center gap-3">

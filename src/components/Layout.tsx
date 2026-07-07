@@ -16,8 +16,13 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="flex min-h-screen bg-[#f7f7f5]">
       <Sidebar />
-      <main className="flex-1 ml-[260px] min-h-screen">
-        <div className="p-6 max-w-[1600px] mx-auto">
+      {/* 
+        Mobile: tidak ada margin (sidebar overlay)
+        Tablet (lg): margin 260px untuk sidebar expanded
+        Desktop dengan sidebar collapsed ditangani via CSS variable jika perlu
+      */}
+      <main className="flex-1 min-h-screen w-full lg:ml-[260px]">
+        <div className="p-4 md:p-6 max-w-[1600px] mx-auto pt-16 lg:pt-6">
           {children}
         </div>
       </main>
