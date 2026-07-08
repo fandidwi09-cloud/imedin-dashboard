@@ -1,7 +1,11 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useUnits } from '@/hooks/useUnits';
 import { useAuth } from '@/hooks/useAuth';
+import { useRegions, Province, Regency, District, Village } from '@/hooks/useRegions';
 import { unitsApi } from '@/services/api';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import {
   Search,
   Plus,
@@ -18,6 +22,18 @@ import {
   Loader2
 } from 'lucide-react';
 import type { Unit, UnitCategory, UnitStatus } from '@/types';
+
+// Fix Leaflet default marker icons
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
 
 const categoryOptions: { value: UnitCategory; label: string }[] = [
   { value: 'dialysis', label: 'Dialysis' },
@@ -60,8 +76,29 @@ const emptyUnit: Omit<Unit, 'id' | 'createdAt' | 'updatedAt'> = {
   nextMaintenanceDate: '',
   lastServiceDate: '',
   status: 'active',
-  notes: ''
+  notes: '',
+  district: '',
+  village: '',
+  postalCode: ''
 };
+
+function LocationMarker({ position, onLocationSelect }: { position: [number, number] | null, onLocationSelect: (lat: number, lng: number) => void }) {
+  const map = useMap();
+
+  useMapEvents({
+    click(e) {
+      onLocationSelect(e.latlng.lat, e.latlng.lng);
+    },
+  });
+
+  useEffect(() => {
+    if (position) {
+      map.setView(position, map.getZoom());
+    }
+  }, [position, map]);
+
+  return position ? <Marker position={position} /> : null;
+}
 
 export default function Units() {
   const [search, setSearch] = useState('');
@@ -75,6 +112,16 @@ export default function Units() {
   const [formData, setFormData] = useState(emptyUnit);
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Region state
+  const { provinces, getRegencies, getDistricts, getVillages } = useRegions();
+  const [regencies, setRegencies] = useState<Regency[]>([]);
+  const [districts, setDistricts] = useState<District[]>([]);
+  const [villages, setVillages] = useState<Village[]>([]);
+
+  const [selectedProvinceId, setSelectedProvinceId] = useState('');
+  const [selectedRegencyId, setSelectedRegencyId] = useState('');
+  const [selectedDistrictId, setSelectedDistrictId] = useState('');
 
   // Geocoding state
   const [addressSearch, setAddressSearch] = useState('');
@@ -97,6 +144,59 @@ export default function Units() {
       finally { setGeocodeLoading(false); }
     }, 500);
   };
+
+  const reverseGeocode = useCallback(async (lat: number, lon: number) => {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`);
+      const data = await res.json();
+      const city = data.address?.city || data.address?.town || data.address?.county || '';
+      const province = data.address?.state || '';
+      const district = data.address?.suburb || data.address?.district || '';
+      const village = data.address?.village || data.address?.neighbourhood || '';
+      const postalCode = data.address?.postcode || '';
+
+      setFormData(prev => ({
+        ...prev,
+        latitude: lat,
+        longitude: lon,
+        address: data.display_name || prev.address,
+        city: city || prev.city,
+        province: province || prev.province,
+        district: district || prev.district,
+        village: village || prev.village,
+        postalCode: postalCode || prev.postalCode,
+      }));
+      setAddressSearch(data.display_name || '');
+
+      // Try to sync with dropdowns
+      if (province) {
+        const prov = provinces.find(p => province.toLowerCase().includes(p.name.toLowerCase()) || p.name.toLowerCase().includes(province.toLowerCase()));
+        if (prov) {
+          setSelectedProvinceId(prov.id);
+          const regs = await getRegencies(prov.id);
+          setRegencies(regs);
+          if (city) {
+            const reg = regs.find(r => city.toLowerCase().includes(r.name.toLowerCase()) || r.name.toLowerCase().includes(city.toLowerCase()));
+            if (reg) {
+              setSelectedRegencyId(reg.id);
+              const dists = await getDistricts(reg.id);
+              setDistricts(dists);
+              if (district) {
+                const dist = dists.find(d => district.toLowerCase().includes(d.name.toLowerCase()) || d.name.toLowerCase().includes(district.toLowerCase()));
+                if (dist) {
+                  setSelectedDistrictId(dist.id);
+                  const vills = await getVillages(dist.id);
+                  setVillages(vills);
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Reverse geocoding error:', err);
+    }
+  }, [provinces, getRegencies, getDistricts, getVillages]);
 
   const selectAddress = (item: typeof addressSuggestions[0]) => {
     const city = item.address.city || item.address.town || item.address.county || '';
@@ -162,16 +262,42 @@ export default function Units() {
     setFormError('');
     setAddressSearch('');
     setAddressSuggestions([]);
+    setSelectedProvinceId('');
+    setSelectedRegencyId('');
+    setSelectedDistrictId('');
+    setRegencies([]);
+    setDistricts([]);
+    setVillages([]);
     setShowForm(true);
   };
 
-  const handleEdit = (unit: Unit) => {
+  const handleEdit = async (unit: Unit) => {
     setEditingUnit(unit);
     setFormData({ ...unit });
     setFormError('');
     setAddressSearch(unit.address || '');
     setAddressSuggestions([]);
     setShowForm(true);
+
+    // Try to pre-load dropdowns based on text names (heuristic)
+    const prov = provinces.find(p => p.name.toLowerCase() === unit.province.toLowerCase());
+    if (prov) {
+      setSelectedProvinceId(prov.id);
+      const regs = await getRegencies(prov.id);
+      setRegencies(regs);
+      const reg = regs.find(r => r.name.toLowerCase().includes(unit.city.toLowerCase()));
+      if (reg) {
+        setSelectedRegencyId(reg.id);
+        const dists = await getDistricts(reg.id);
+        setDistricts(dists);
+        const dist = dists.find(d => d.name.toLowerCase().includes(unit.district.toLowerCase()));
+        if (dist) {
+          setSelectedDistrictId(dist.id);
+          const vills = await getVillages(dist.id);
+          setVillages(vills);
+        }
+      }
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -511,20 +637,103 @@ export default function Units() {
 
                   <div>
                     <label className="block text-xs font-medium text-[#8b8f95] mb-1">Province</label>
-                    <input
-                      value={formData.province}
-                      onChange={e => setFormData({ ...formData, province: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/15"
-                    />
+                    <select
+                      value={selectedProvinceId}
+                      onChange={async (e) => {
+                        const id = e.target.value;
+                        const name = provinces.find(p => p.id === id)?.name || '';
+                        setSelectedProvinceId(id);
+                        setFormData(prev => ({ ...prev, province: name, city: '', district: '', village: '' }));
+                        setSelectedRegencyId('');
+                        setSelectedDistrictId('');
+                        setDistricts([]);
+                        setVillages([]);
+                        if (id) {
+                          const data = await getRegencies(id);
+                          setRegencies(data);
+                        } else {
+                          setRegencies([]);
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6]"
+                    >
+                      <option value="">Pilih Provinsi</option>
+                      {provinces.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-[#8b8f95] mb-1">City</label>
-                    <input
-                      value={formData.city}
-                      onChange={e => setFormData({ ...formData, city: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/15"
-                    />
+                    <label className="block text-xs font-medium text-[#8b8f95] mb-1">Kabupaten / Kota</label>
+                    <select
+                      value={selectedRegencyId}
+                      disabled={!selectedProvinceId}
+                      onChange={async (e) => {
+                        const id = e.target.value;
+                        const name = regencies.find(r => r.id === id)?.name || '';
+                        setSelectedRegencyId(id);
+                        setFormData(prev => ({ ...prev, city: name, district: '', village: '' }));
+                        setSelectedDistrictId('');
+                        setVillages([]);
+                        if (id) {
+                          const data = await getDistricts(id);
+                          setDistricts(data);
+                        } else {
+                          setDistricts([]);
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] disabled:opacity-50"
+                    >
+                      <option value="">Pilih Kabupaten/Kota</option>
+                      {regencies.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-[#8b8f95] mb-1">Kecamatan</label>
+                    <select
+                      value={selectedDistrictId}
+                      disabled={!selectedRegencyId}
+                      onChange={async (e) => {
+                        const id = e.target.value;
+                        const name = districts.find(d => d.id === id)?.name || '';
+                        setSelectedDistrictId(id);
+                        setFormData(prev => ({ ...prev, district: name, village: '' }));
+                        if (id) {
+                          const data = await getVillages(id);
+                          setVillages(data);
+                        } else {
+                          setVillages([]);
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] disabled:opacity-50"
+                    >
+                      <option value="">Pilih Kecamatan</option>
+                      {districts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-[#8b8f95] mb-1">Desa / Kelurahan</label>
+                      <select
+                        value={formData.village}
+                        disabled={!selectedDistrictId}
+                        onChange={(e) => setFormData(prev => ({ ...prev, village: e.target.value }))}
+                        className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] disabled:opacity-50"
+                      >
+                        <option value="">Pilih Desa/Kelurahan</option>
+                        {villages.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-[#8b8f95] mb-1">Kode Pos</label>
+                      <input
+                        value={formData.postalCode}
+                        onChange={e => setFormData({ ...formData, postalCode: e.target.value })}
+                        className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/15"
+                        placeholder="12345"
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -588,13 +797,43 @@ export default function Units() {
                   )}
                 </div>
 
-                {/* Koordinat hasil geocoding — readonly, tampil sebagai info */}
-                {(formData.latitude !== 0 || formData.longitude !== 0) && (
-                  <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-700">
-                    <MapPin size={14} />
-                    Koordinat: {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
+                {/* Interactive Map */}
+                <div className="mb-4 bg-[#f7f7f5] rounded-lg border border-[#e6e6e8] overflow-hidden">
+                  <div className="h-64 w-full relative">
+                    <MapContainer
+                      center={[formData.latitude || -2.5489, formData.longitude || 118.0149]}
+                      zoom={formData.latitude ? 15 : 5}
+                      style={{ height: '100%', width: '100%' }}
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <LocationMarker
+                        position={formData.latitude && formData.longitude ? [formData.latitude, formData.longitude] : null}
+                        onLocationSelect={reverseGeocode}
+                      />
+                    </MapContainer>
+                    <div className="absolute top-2 right-2 z-[1000] bg-white/90 backdrop-blur-sm px-2 py-1 rounded border border-[#e6e6e8] shadow-sm pointer-events-none">
+                      <p className="text-[10px] text-[#8b8f95] font-medium">Klik pada peta untuk set lokasi</p>
+                    </div>
                   </div>
-                )}
+                  {(formData.latitude !== 0 || formData.longitude !== 0) && (
+                    <div className="px-3 py-2 bg-emerald-50 border-t border-emerald-100 text-[11px] text-emerald-700 flex justify-between items-center">
+                      <span className="flex items-center gap-1.5 font-medium">
+                        <MapPin size={12} />
+                        {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, latitude: 0, longitude: 0 }))}
+                        className="text-emerald-600 hover:text-emerald-800 font-semibold"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  )}
+                </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
                   <div>

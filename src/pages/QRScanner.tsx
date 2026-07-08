@@ -38,24 +38,11 @@ export default function QRScanner() {
   const scanIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const startCamera = async () => {
-    try {
-      setCameraError('');
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-        setScanning(true);
-      }
-    } catch {
-      setCameraError('Tidak dapat mengakses kamera. Pastikan Anda memberikan izin kamera.');
-      setScanning(false);
-    }
+    setCameraError('');
+    setScanning(true);
   };
 
-  const stopCamera = () => {
+  const stopCamera = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -65,7 +52,42 @@ export default function QRScanner() {
       scanIntervalRef.current = null;
     }
     setScanning(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const setupCamera = async () => {
+      if (scanning && !streamRef.current) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+          });
+
+          if (!active) {
+            stream.getTracks().forEach(track => track.stop());
+            return;
+          }
+
+          streamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.play().catch(console.error);
+          }
+        } catch (err) {
+          console.error('Camera error:', err);
+          setCameraError('Tidak dapat mengakses kamera. Pastikan Anda memberikan izin kamera.');
+          setScanning(false);
+        }
+      }
+    };
+
+    setupCamera();
+
+    return () => {
+      active = false;
+    };
+  }, [scanning]);
 
   const scanQRCode = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current || !scanning) return;
