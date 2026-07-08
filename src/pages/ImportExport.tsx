@@ -17,7 +17,6 @@ export default function ImportExport() {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<{ headers: string[]; rows: string[][] } | null>(null);
   const [importing, setImporting] = useState(false);
-  [importing];
   const [importResult, setImportResult] = useState<{ imported: number; errors: string[] } | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [exportFormat, setExportFormat] = useState<'xlsx' | 'csv'>('xlsx');
@@ -392,8 +391,8 @@ export default function ImportExport() {
         </p>
         <button
           onClick={() => {
-            const headers = ['Serial Number', 'Product Name', 'Category', 'Model', 'Manufacturer', 'Customer Name', 'Customer Phone', 'Province', 'City', 'Address', 'Latitude', 'Longitude', 'Installation Date', 'Warranty End Date', 'Next Maintenance Date', 'Status', 'Notes'];
-            const sample = ['IMD-20230001', 'Hemodialysis Machine HD-500', 'dialysis', 'HD-500', 'IMEDIN Medical', 'RS Jakarta', '08123456789', 'DKI Jakarta', 'Jakarta', 'Jl. Kesehatan No. 1', '-6.2088', '106.8456', '2024-01-15', '2026-01-15', '2025-07-15', 'active', 'Unit baru terpasang'];
+            const headers = ['Serial Number', 'Product Name', 'Category', 'Model', 'Manufacturer', 'Customer Name', 'Customer Phone', 'Province', 'City', 'District', 'Village', 'Postal Code', 'Address', 'Latitude', 'Longitude', 'Installation Date', 'Warranty End Date', 'Next Maintenance Date', 'Status', 'Notes'];
+            const sample = ['IMD-20230001', 'Hemodialysis Machine HD-500', 'dialysis', 'HD-500', 'IMEDIN Medical', 'RS Jakarta', '08123456789', 'DKI Jakarta', 'Jakarta Selatan', 'Kebayoran Baru', 'Selong', '12110', 'Jl. Kesehatan No. 1', '-6.2088', '106.8456', '2024-01-15', '2026-01-15', '2025-07-15', 'active', 'Unit baru terpasang'];
             const csv = [headers, sample].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = URL.createObjectURL(blob);

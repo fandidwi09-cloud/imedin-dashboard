@@ -61,9 +61,9 @@ export default function MapView() {
 
   const { units, loading } = useUnits({ search, province: provinceFilter, status: statusFilter });
 
-  const provinces = useMemo(() => {
+  const availableProvinces = useMemo(() => {
     const set = new Set(units.map(u => u.province));
-    return Array.from(set).sort();
+    return Array.from(set).filter(Boolean).sort();
   }, [units]);
 
   const validUnits = useMemo(() => {
@@ -116,7 +116,7 @@ export default function MapView() {
               className="w-full pl-10 pr-8 py-2.5 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/15 transition-all appearance-none"
             >
               <option value="">Semua Provinsi</option>
-              {provinces.map(p => (
+              {availableProvinces.map(p => (
                 <option key={p} value={p}>{p}</option>
               ))}
             </select>
@@ -182,7 +182,7 @@ export default function MapView() {
                     <p className="text-xs font-mono text-[#3b82f6] mb-2">{unit.serialNumber}</p>
                     <div className="space-y-1 text-xs text-[#8b8f95]">
                       <p><span className="text-[#1d1d1d]">Customer:</span> {unit.customerName}</p>
-                      <p><span className="text-[#1d1d1d]">Lokasi:</span> {unit.city}, {unit.province}</p>
+                      <p><span className="text-[#1d1d1d]">Lokasi:</span> {unit.district ? `${unit.district}, ` : ''}{unit.city}, {unit.province}</p>
                       <p><span className="text-[#1d1d1d]">Install:</span> {unit.installationDate}</p>
                       <p><span className="text-[#1d1d1d]">Next Maint:</span> {unit.nextMaintenanceDate}</p>
                     </div>

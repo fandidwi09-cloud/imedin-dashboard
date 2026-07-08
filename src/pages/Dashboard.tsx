@@ -307,7 +307,11 @@ export default function Dashboard() {
                   </td>
                   <td className="px-4 py-3 text-sm text-[#1d1d1d]">{unit.productName}</td>
                   <td className="px-4 py-3 text-sm text-[#8b8f95]">{unit.customerName}</td>
-                  <td className="px-4 py-3 text-sm text-[#8b8f95]">{unit.city}, {unit.province}</td>
+                  <td className="px-4 py-3 text-sm text-[#8b8f95]">
+                    <span className="truncate block max-w-[120px]" title={`${unit.city}, ${unit.province}`}>
+                      {unit.city}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-sm font-medium text-[#1d1d1d]">{unit.nextMaintenanceDate}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${statusColors[unit.status]}`}>

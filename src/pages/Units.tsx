@@ -198,17 +198,20 @@ export default function Units() {
     }
   }, [provinces, getRegencies, getDistricts, getVillages]);
 
-  const selectAddress = (item: typeof addressSuggestions[0]) => {
-    const city = item.address.city || item.address.town || item.address.county || '';
-    const province = item.address.state || '';
+  const selectAddress = async (item: typeof addressSuggestions[0]) => {
+    const lat = parseFloat(item.lat);
+    const lon = parseFloat(item.lon);
+
+    // Use reverseGeocode logic to ensure all fields (district, village, etc.) are synced
+    // and dropdowns are updated
+    await reverseGeocode(lat, lon);
+
+    // Overwrite the address with the display_name from search if preferred
     setFormData(prev => ({
       ...prev,
-      address: item.display_name,
-      latitude: parseFloat(item.lat),
-      longitude: parseFloat(item.lon),
-      city: prev.city || city,
-      province: prev.province || province,
+      address: item.display_name
     }));
+
     setAddressSearch(item.display_name);
     setAddressSuggestions([]);
   };
@@ -220,19 +223,7 @@ export default function Units() {
       async (pos) => {
         const { latitude, longitude } = pos.coords;
         try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`);
-          const data = await res.json();
-          const city = data.address?.city || data.address?.town || data.address?.county || '';
-          const province = data.address?.state || '';
-          setFormData(prev => ({
-            ...prev,
-            latitude,
-            longitude,
-            address: prev.address || data.display_name || '',
-            city: prev.city || city,
-            province: prev.province || province,
-          }));
-          setAddressSearch(data.display_name || '');
+          await reverseGeocode(latitude, longitude);
         } catch {
           setFormData(prev => ({ ...prev, latitude, longitude }));
         }
@@ -247,9 +238,9 @@ export default function Units() {
 
   const { units, loading, refresh } = useUnits({ search, province: provinceFilter, category: categoryFilter, status: statusFilter });
 
-  const provinces = useMemo(() => {
+  const availableProvinces = useMemo(() => {
     const set = new Set(units.map(u => u.province));
-    return Array.from(set).sort();
+    return Array.from(set).filter(Boolean).sort();
   }, [units]);
 
   const pageSize = 10;
@@ -385,7 +376,7 @@ export default function Units() {
             className="min-w-[140px] px-3 py-2.5 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6]"
           >
             <option value="">Semua Provinsi</option>
-            {provinces.map(p => <option key={p} value={p}>{p}</option>)}
+            {availableProvinces.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
           <select
             value={categoryFilter}
@@ -463,7 +454,9 @@ export default function Units() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1 text-sm text-[#8b8f95]">
                         <MapPin size={14} className="text-[#3b82f6]" />
-                        {unit.city}, {unit.province}
+                        <span className="truncate max-w-[150px]" title={`${unit.village ? unit.village + ', ' : ''}${unit.district ? unit.district + ', ' : ''}${unit.city}, ${unit.province}`}>
+                          {unit.district ? `${unit.district}, ` : ''}{unit.city}
+                        </span>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-[#8b8f95]">{unit.installationDate}</td>
@@ -643,7 +636,7 @@ export default function Units() {
                         const id = e.target.value;
                         const name = provinces.find(p => p.id === id)?.name || '';
                         setSelectedProvinceId(id);
-                        setFormData(prev => ({ ...prev, province: name, city: '', district: '', village: '' }));
+                        setFormData(prev => ({ ...prev, province: name, city: '', district: '', village: '', postalCode: '' }));
                         setSelectedRegencyId('');
                         setSelectedDistrictId('');
                         setDistricts([]);
@@ -671,7 +664,7 @@ export default function Units() {
                         const id = e.target.value;
                         const name = regencies.find(r => r.id === id)?.name || '';
                         setSelectedRegencyId(id);
-                        setFormData(prev => ({ ...prev, city: name, district: '', village: '' }));
+                        setFormData(prev => ({ ...prev, city: name, district: '', village: '', postalCode: '' }));
                         setSelectedDistrictId('');
                         setVillages([]);
                         if (id) {
@@ -697,7 +690,7 @@ export default function Units() {
                         const id = e.target.value;
                         const name = districts.find(d => d.id === id)?.name || '';
                         setSelectedDistrictId(id);
-                        setFormData(prev => ({ ...prev, district: name, village: '' }));
+                        setFormData(prev => ({ ...prev, district: name, village: '', postalCode: '' }));
                         if (id) {
                           const data = await getVillages(id);
                           setVillages(data);

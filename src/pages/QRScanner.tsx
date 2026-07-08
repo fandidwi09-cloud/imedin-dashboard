@@ -349,7 +349,10 @@ export default function QRScanner() {
                   <div>
                     <p className="text-xs text-[#8b8f95]">Lokasi</p>
                     <p className="text-sm text-[#1d1d1d]">{foundUnit.customerName}</p>
-                    <p className="text-xs text-[#8b8f95]">{foundUnit.address}, {foundUnit.city}, {foundUnit.province}</p>
+                    <p className="text-xs text-[#8b8f95]">
+                      {foundUnit.address}<br />
+                      {foundUnit.village && `${foundUnit.village}, `}{foundUnit.district && `${foundUnit.district}, `}{foundUnit.city}, {foundUnit.province} {foundUnit.postalCode}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
