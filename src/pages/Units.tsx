@@ -1,6 +1,7 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useUnits } from '@/hooks/useUnits';
 import { useAuth } from '@/hooks/useAuth';
+import { useRegions, Province, Regency, District, Village } from '@/hooks/useRegions';
 import { unitsApi } from '@/services/api';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -75,7 +76,10 @@ const emptyUnit: Omit<Unit, 'id' | 'createdAt' | 'updatedAt'> = {
   nextMaintenanceDate: '',
   lastServiceDate: '',
   status: 'active',
-  notes: ''
+  notes: '',
+  district: '',
+  village: '',
+  postalCode: ''
 };
 
 function LocationMarker({ position, onLocationSelect }: { position: [number, number] | null, onLocationSelect: (lat: number, lng: number) => void }) {
@@ -109,6 +113,16 @@ export default function Units() {
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Region state
+  const { provinces, getRegencies, getDistricts, getVillages } = useRegions();
+  const [regencies, setRegencies] = useState<Regency[]>([]);
+  const [districts, setDistricts] = useState<District[]>([]);
+  const [villages, setVillages] = useState<Village[]>([]);
+
+  const [selectedProvinceId, setSelectedProvinceId] = useState('');
+  const [selectedRegencyId, setSelectedRegencyId] = useState('');
+  const [selectedDistrictId, setSelectedDistrictId] = useState('');
+
   // Geocoding state
   const [addressSearch, setAddressSearch] = useState('');
   const [addressSuggestions, setAddressSuggestions] = useState<{ display_name: string; lat: string; lon: string; address: { state?: string; city?: string; town?: string; county?: string } }[]>([]);
@@ -131,12 +145,16 @@ export default function Units() {
     }, 500);
   };
 
-  const reverseGeocode = async (lat: number, lon: number) => {
+  const reverseGeocode = useCallback(async (lat: number, lon: number) => {
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`);
       const data = await res.json();
       const city = data.address?.city || data.address?.town || data.address?.county || '';
       const province = data.address?.state || '';
+      const district = data.address?.suburb || data.address?.district || '';
+      const village = data.address?.village || data.address?.neighbourhood || '';
+      const postalCode = data.address?.postcode || '';
+
       setFormData(prev => ({
         ...prev,
         latitude: lat,
@@ -144,12 +162,41 @@ export default function Units() {
         address: data.display_name || prev.address,
         city: city || prev.city,
         province: province || prev.province,
+        district: district || prev.district,
+        village: village || prev.village,
+        postalCode: postalCode || prev.postalCode,
       }));
       setAddressSearch(data.display_name || '');
+
+      // Try to sync with dropdowns
+      if (province) {
+        const prov = provinces.find(p => province.toLowerCase().includes(p.name.toLowerCase()) || p.name.toLowerCase().includes(province.toLowerCase()));
+        if (prov) {
+          setSelectedProvinceId(prov.id);
+          const regs = await getRegencies(prov.id);
+          setRegencies(regs);
+          if (city) {
+            const reg = regs.find(r => city.toLowerCase().includes(r.name.toLowerCase()) || r.name.toLowerCase().includes(city.toLowerCase()));
+            if (reg) {
+              setSelectedRegencyId(reg.id);
+              const dists = await getDistricts(reg.id);
+              setDistricts(dists);
+              if (district) {
+                const dist = dists.find(d => district.toLowerCase().includes(d.name.toLowerCase()) || d.name.toLowerCase().includes(district.toLowerCase()));
+                if (dist) {
+                  setSelectedDistrictId(dist.id);
+                  const vills = await getVillages(dist.id);
+                  setVillages(vills);
+                }
+              }
+            }
+          }
+        }
+      }
     } catch (err) {
       console.error('Reverse geocoding error:', err);
     }
-  };
+  }, [provinces, getRegencies, getDistricts, getVillages]);
 
   const selectAddress = (item: typeof addressSuggestions[0]) => {
     const city = item.address.city || item.address.town || item.address.county || '';
@@ -215,16 +262,42 @@ export default function Units() {
     setFormError('');
     setAddressSearch('');
     setAddressSuggestions([]);
+    setSelectedProvinceId('');
+    setSelectedRegencyId('');
+    setSelectedDistrictId('');
+    setRegencies([]);
+    setDistricts([]);
+    setVillages([]);
     setShowForm(true);
   };
 
-  const handleEdit = (unit: Unit) => {
+  const handleEdit = async (unit: Unit) => {
     setEditingUnit(unit);
     setFormData({ ...unit });
     setFormError('');
     setAddressSearch(unit.address || '');
     setAddressSuggestions([]);
     setShowForm(true);
+
+    // Try to pre-load dropdowns based on text names (heuristic)
+    const prov = provinces.find(p => p.name.toLowerCase() === unit.province.toLowerCase());
+    if (prov) {
+      setSelectedProvinceId(prov.id);
+      const regs = await getRegencies(prov.id);
+      setRegencies(regs);
+      const reg = regs.find(r => r.name.toLowerCase().includes(unit.city.toLowerCase()));
+      if (reg) {
+        setSelectedRegencyId(reg.id);
+        const dists = await getDistricts(reg.id);
+        setDistricts(dists);
+        const dist = dists.find(d => d.name.toLowerCase().includes(unit.district.toLowerCase()));
+        if (dist) {
+          setSelectedDistrictId(dist.id);
+          const vills = await getVillages(dist.id);
+          setVillages(vills);
+        }
+      }
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -564,20 +637,103 @@ export default function Units() {
 
                   <div>
                     <label className="block text-xs font-medium text-[#8b8f95] mb-1">Province</label>
-                    <input
-                      value={formData.province}
-                      onChange={e => setFormData({ ...formData, province: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/15"
-                    />
+                    <select
+                      value={selectedProvinceId}
+                      onChange={async (e) => {
+                        const id = e.target.value;
+                        const name = provinces.find(p => p.id === id)?.name || '';
+                        setSelectedProvinceId(id);
+                        setFormData(prev => ({ ...prev, province: name, city: '', district: '', village: '' }));
+                        setSelectedRegencyId('');
+                        setSelectedDistrictId('');
+                        setDistricts([]);
+                        setVillages([]);
+                        if (id) {
+                          const data = await getRegencies(id);
+                          setRegencies(data);
+                        } else {
+                          setRegencies([]);
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6]"
+                    >
+                      <option value="">Pilih Provinsi</option>
+                      {provinces.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-[#8b8f95] mb-1">City</label>
-                    <input
-                      value={formData.city}
-                      onChange={e => setFormData({ ...formData, city: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/15"
-                    />
+                    <label className="block text-xs font-medium text-[#8b8f95] mb-1">Kabupaten / Kota</label>
+                    <select
+                      value={selectedRegencyId}
+                      disabled={!selectedProvinceId}
+                      onChange={async (e) => {
+                        const id = e.target.value;
+                        const name = regencies.find(r => r.id === id)?.name || '';
+                        setSelectedRegencyId(id);
+                        setFormData(prev => ({ ...prev, city: name, district: '', village: '' }));
+                        setSelectedDistrictId('');
+                        setVillages([]);
+                        if (id) {
+                          const data = await getDistricts(id);
+                          setDistricts(data);
+                        } else {
+                          setDistricts([]);
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] disabled:opacity-50"
+                    >
+                      <option value="">Pilih Kabupaten/Kota</option>
+                      {regencies.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-[#8b8f95] mb-1">Kecamatan</label>
+                    <select
+                      value={selectedDistrictId}
+                      disabled={!selectedRegencyId}
+                      onChange={async (e) => {
+                        const id = e.target.value;
+                        const name = districts.find(d => d.id === id)?.name || '';
+                        setSelectedDistrictId(id);
+                        setFormData(prev => ({ ...prev, district: name, village: '' }));
+                        if (id) {
+                          const data = await getVillages(id);
+                          setVillages(data);
+                        } else {
+                          setVillages([]);
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] disabled:opacity-50"
+                    >
+                      <option value="">Pilih Kecamatan</option>
+                      {districts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-[#8b8f95] mb-1">Desa / Kelurahan</label>
+                      <select
+                        value={formData.village}
+                        disabled={!selectedDistrictId}
+                        onChange={(e) => setFormData(prev => ({ ...prev, village: e.target.value }))}
+                        className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] disabled:opacity-50"
+                      >
+                        <option value="">Pilih Desa/Kelurahan</option>
+                        {villages.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-[#8b8f95] mb-1">Kode Pos</label>
+                      <input
+                        value={formData.postalCode}
+                        onChange={e => setFormData({ ...formData, postalCode: e.target.value })}
+                        className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/15"
+                        placeholder="12345"
+                      />
+                    </div>
                   </div>
 
                   <div>

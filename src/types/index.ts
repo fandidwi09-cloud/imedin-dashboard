@@ -28,6 +28,9 @@ export interface Unit {
   customerPhone: string;
   province: string;
   city: string;
+  district: string;
+  village: string;
+  postalCode: string;
   address: string;
   latitude: number;
   longitude: number;
