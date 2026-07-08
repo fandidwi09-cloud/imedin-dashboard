@@ -1,7 +1,8 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useUnits } from '@/hooks/useUnits';
 import { useAuth } from '@/hooks/useAuth';
-import { useRegions, Province, Regency, District, Village } from '@/hooks/useRegions';
+import type { Province, Regency, District, Village } from '@/hooks/useRegions';
+import { useRegions } from '@/hooks/useRegions';
 import { unitsApi } from '@/services/api';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -247,7 +248,7 @@ export default function Units() {
 
   const { units, loading, refresh } = useUnits({ search, province: provinceFilter, category: categoryFilter, status: statusFilter });
 
-  const provinces = useMemo(() => {
+  const provinceList = useMemo(() => {
     const set = new Set(units.map(u => u.province));
     return Array.from(set).sort();
   }, [units]);
@@ -376,7 +377,7 @@ export default function Units() {
               value={search}
               onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
               placeholder="Cari serial number, produk, customer..."
-              className="w-full pl-10 pr-4 py-2.5 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] placeholder:text-[#8b8f95] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/15 transition-all"
+              className="w-full pl-10 pr-4 py-2.5 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] placeholder:text-[#8b8f95] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/20"
             />
           </div>
           <select
@@ -385,7 +386,7 @@ export default function Units() {
             className="min-w-[140px] px-3 py-2.5 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6]"
           >
             <option value="">Semua Provinsi</option>
-            {provinces.map(p => <option key={p} value={p}>{p}</option>)}
+            {provinceList.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
           <select
             value={categoryFilter}
@@ -567,7 +568,7 @@ export default function Units() {
                     <input
                       value={formData.serialNumber}
                       onChange={e => setFormData({ ...formData, serialNumber: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/15"
+                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/20"
                       placeholder="IMD-20230001"
                     />
                   </div>
@@ -577,7 +578,7 @@ export default function Units() {
                     <input
                       value={formData.productName}
                       onChange={e => setFormData({ ...formData, productName: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/15"
+                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/20"
                       placeholder="Hemodialysis Machine HD-500"
                     />
                   </div>
@@ -598,7 +599,7 @@ export default function Units() {
                     <input
                       value={formData.model}
                       onChange={e => setFormData({ ...formData, model: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/15"
+                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/20"
                     />
                   </div>
 
@@ -607,7 +608,7 @@ export default function Units() {
                     <input
                       value={formData.manufacturer}
                       onChange={e => setFormData({ ...formData, manufacturer: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/15"
+                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/20"
                     />
                   </div>
                 </div>
@@ -620,7 +621,7 @@ export default function Units() {
                     <input
                       value={formData.customerName}
                       onChange={e => setFormData({ ...formData, customerName: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/15"
+                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/20"
                       placeholder="RS Jakarta"
                     />
                   </div>
@@ -630,7 +631,7 @@ export default function Units() {
                     <input
                       value={formData.customerPhone}
                       onChange={e => setFormData({ ...formData, customerPhone: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/15"
+                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/20"
                       placeholder="08123456789"
                     />
                   </div>
@@ -730,7 +731,7 @@ export default function Units() {
                       <input
                         value={formData.postalCode}
                         onChange={e => setFormData({ ...formData, postalCode: e.target.value })}
-                        className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/15"
+                        className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/20"
                         placeholder="12345"
                       />
                     </div>
@@ -742,7 +743,7 @@ export default function Units() {
                       value={formData.address}
                       onChange={e => setFormData({ ...formData, address: e.target.value })}
                       rows={2}
-                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/15 resize-none"
+                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/20"
                     />
                   </div>
                 </div>
@@ -761,7 +762,7 @@ export default function Units() {
                       value={addressSearch}
                       onChange={e => searchAddress(e.target.value)}
                       placeholder="Ketik alamat... (min. 3 karakter)"
-                      className="w-full pl-9 pr-28 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/15"
+                      className="w-full pl-9 pr-28 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/20"
                     />
                     <button
                       type="button"
