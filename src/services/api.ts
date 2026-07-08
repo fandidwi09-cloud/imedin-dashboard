@@ -475,20 +475,29 @@ export const importExportApi = {
     return res.json();
   },
   exportUnits: async (format:'xlsx'|'csv', filters?:Record<string,string>): Promise<Blob> => {
-    await new Promise(r=>setTimeout(r,500));
-    let units=getMockUnits();
-    if(filters?.province) units=units.filter(u=>u.province===filters.province);
-    if(format==='csv'){
-      const headers=['ID','Serial Number','Product','Brand','Category','Model','Facility','Province','City','Status','Installation Date','Warranty End'];
-      const rows=units.map(u=>[u.id,u.serialNumber,u.productName,u.brand,u.category,u.model,u.facilityName,u.province,u.city,u.status,u.installationDate,u.warrantyEndDate]);
-      const csv=[headers,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-      return new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    // Ambil data real kalau tidak mock
+    let units: Unit[] = [];
+    if (USE_MOCK) {
+      units = getMockUnits();
+    } else {
+      const result = await unitsApi.getAll(filters as import('@/types').GlobalFilter);
+      units = result.success && result.data ? result.data : [];
     }
-    const XLSX=await import('xlsx');
-    const ws=XLSX.utils.json_to_sheet(units);
-    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Units');
-    const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
-    return new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    if (filters?.province) units = units.filter(u => u.province === filters.province);
+    if (filters?.status)   units = units.filter(u => u.status   === filters.status);
+
+    if (format === 'csv') {
+      const headers = ['ID','Serial Number','Product','Brand','Category','Model','Facility','Province','City','Status','Installation Date','Warranty End','Notes'];
+      const rows = units.map(u => [u.id,u.serialNumber,u.productName,u.brand,u.category,u.model,u.facilityName,u.province,u.city,u.status,u.installationDate,u.warrantyEndDate,u.notes]);
+      const csv = [headers,...rows].map(r=>r.map(c=>`"${String(c??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+      return new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    }
+    const XLSX = await import('xlsx');
+    const ws = XLSX.utils.json_to_sheet(units);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Units');
+    const buf = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+    return new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
   }
 };
 

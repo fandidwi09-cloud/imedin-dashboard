@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -50,9 +50,10 @@ function MapClickHandler({onMove}:{onMove:(lat:number,lng:number)=>void}) {
   return null;
 }
 
-export default function Assets() {
+export default function Assets({ editMode }: { editMode?: boolean }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { id: editId } = useParams<{ id?: string }>();
   const { hasRole, isAuthenticated } = useAuth();
   const isAdmin = hasRole('admin');
   const canEdit = hasRole(['admin','teknisi']);
@@ -75,6 +76,21 @@ export default function Assets() {
   const debounce = useRef<ReturnType<typeof setTimeout>|null>(null);
 
   const { units, loading, refresh } = useUnits({ search, province, category, status });
+
+  // Auto-buka form edit kalau dari route /assets/:id/edit
+  useEffect(() => {
+    if (editMode && editId) {
+      unitsApi.getById(editId).then(r => {
+        if (r.success && r.data) {
+          setEditingUnit(r.data);
+          setFormData({...r.data});
+          setAddrSearch(r.data.address || '');
+          setSuggestions([]);
+          setShowForm(true);
+        }
+      });
+    }
+  }, [editMode, editId]);
   const pageSize = 15;
   const totalPages = Math.ceil(units.length/pageSize);
   const paged = units.slice((page-1)*pageSize, page*pageSize);
@@ -314,13 +330,21 @@ export default function Assets() {
                     className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1 px-2 py-1 bg-[#3b82f6] text-white rounded text-xs hover:bg-blue-600 disabled:opacity-50">
                     {gps?<Loader2 size={11} className="animate-spin"/>:<Navigation size={11}/>} GPS
                   </button>
+                  {/* Dropdown suggestions — di dalam relative parent supaya tidak terpotong */}
+                  {(geocoding||suggestions.length>0) && (
+                    <div className="absolute top-full left-0 right-0 z-[100] mt-1 bg-white border border-[#e6e6e8] rounded-lg shadow-xl overflow-hidden">
+                      {geocoding
+                        ? <div className="flex items-center gap-2 px-3 py-2 text-sm text-[#8b8f95]"><Loader2 size={13} className="animate-spin"/>Mencari...</div>
+                        : suggestions.map((s,i)=>(
+                            <button key={i} type="button" onClick={()=>selectAddr(s)}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 border-b border-[#f7f7f5] last:border-0">
+                              <span className="line-clamp-2 text-xs">{s.display_name}</span>
+                            </button>
+                          ))
+                      }
+                    </div>
+                  )}
                 </div>
-                {(geocoding||suggestions.length>0) && (
-                  <div className="absolute z-20 bg-white border border-[#e6e6e8] rounded-lg shadow-lg overflow-hidden max-w-xl">
-                    {geocoding ? <div className="flex items-center gap-2 px-3 py-2 text-sm text-[#8b8f95]"><Loader2 size={13} className="animate-spin"/>Mencari...</div>
-                    : suggestions.map((s,i)=><button key={i} type="button" onClick={()=>selectAddr(s)} className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 border-b border-[#f7f7f5] last:border-0"><span className="line-clamp-1">{s.display_name}</span></button>)}
-                  </div>
-                )}
                 {(formData.latitude!==0||formData.longitude!==0) && (
                   <div className="mb-2 flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-700">
                     <MapPin size={12}/> {Number(formData.latitude).toFixed(6)}, {Number(formData.longitude).toFixed(6)}

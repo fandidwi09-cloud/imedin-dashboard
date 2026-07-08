@@ -18,10 +18,11 @@ export function useAuth() {
     return result;
   }, []);
 
+  // BUG FIX: logout pakai hash routing yang benar (app pakai HashRouter)
   const logout = useCallback(() => {
     authApi.logout();
     setUser(null);
-    window.location.href = window.location.pathname + '#/login';
+    window.location.hash = '#/login';
   }, []);
 
   // hasRole: guest (tidak login) hanya bisa akses role 'guest'.

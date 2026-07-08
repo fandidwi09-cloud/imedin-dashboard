@@ -38,6 +38,11 @@ function AppRoutes() {
       <Route path="/assets/:id" element={
         <ProtectedRoute><Layout><UnitDetail /></Layout></ProtectedRoute>
       } />
+      <Route path="/assets/:id/edit" element={
+        <ProtectedRoute allowedRoles={['admin','teknisi']}>
+          <Layout><Assets editMode /></Layout>
+        </ProtectedRoute>
+      } />
 
       {/* Aktivitas — semua role */}
       <Route path="/activities" element={

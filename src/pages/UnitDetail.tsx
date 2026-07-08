@@ -94,7 +94,7 @@ export default function UnitDetail() {
           <p className="text-sm text-[#8b8f95] mt-0.5">{unit.facilityName || unit.customerName} · {unit.city}, {unit.province}</p>
         </div>
         {canEdit && (
-          <button onClick={()=>navigate(`/assets?edit=${unit.id}`)} className="hidden sm:flex items-center gap-2 px-3 py-2 border border-[#e6e6e8] rounded-lg text-sm text-[#8b8f95] hover:bg-[#f7f7f5] transition-colors">
+          <button onClick={()=>navigate(`/assets/${unit.id}/edit`)} className="hidden sm:flex items-center gap-2 px-3 py-2 border border-[#e6e6e8] rounded-lg text-sm text-[#8b8f95] hover:bg-[#f7f7f5] transition-colors">
             <Wrench size={15}/> Edit
           </button>
         )}
