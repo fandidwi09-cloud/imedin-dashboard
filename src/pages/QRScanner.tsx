@@ -13,7 +13,7 @@ import {
   X,
   RotateCcw
 } from 'lucide-react';
-import type { Unit } from '@/types';
+import type { Unit, ServiceRecord } from '@/types';
 
 export default function QRScanner() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -515,7 +515,7 @@ export default function QRScanner() {
 }
 
 function ServiceHistoryMini({ unitId, serialNumber }: { unitId: string; serialNumber: string }) {
-  const [services, setServices] = useState<any[]>([]);
+  const [services, setServices] = useState<ServiceRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
   requireAuth?: boolean; // kalau true, wajib login. kalau false, visitor boleh akses
 }
 
-export default function ProtectedRoute({ children, allowedRoles, requireAuth = false }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, allowedRoles, requireAuth = true }: ProtectedRouteProps) {
   const { isAuthenticated, hasRole, loading } = useAuth();
 
   if (loading) {

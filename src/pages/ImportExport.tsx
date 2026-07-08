@@ -11,14 +11,13 @@ import {
   Filter,
   FileUp
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
 
 export default function ImportExport() {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<{ headers: string[]; rows: string[][] } | null>(null);
   const [importing, setImporting] = useState(false);
-  [importing];
   const [importResult, setImportResult] = useState<{ imported: number; errors: string[] } | null>(null);
+  const [importData, setImportData] = useState<Record<string, string>[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [exportFormat, setExportFormat] = useState<'xlsx' | 'csv'>('xlsx');
   const [exportFilters, setExportFilters] = useState({ province: '', category: '', status: '' });
@@ -46,12 +45,12 @@ export default function ImportExport() {
     if (file) processFile(file);
   };
 
-  const processFile = (file: File) => {
+  const processFile = async (file: File) => {
     setImportFile(file);
     setImportResult(null);
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const data = e.target?.result;
         let jsonData: Record<string, string>[] = [];
@@ -98,6 +97,7 @@ export default function ImportExport() {
             return obj;
           });
         } else {
+          const XLSX = await import('xlsx');
           const workbook = XLSX.read(data, { type: 'binary' });
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
@@ -107,7 +107,7 @@ export default function ImportExport() {
           setImportPreview({ headers, rows });
         }
 
-        (window as any).__importData = jsonData;
+        setImportData(jsonData);
       } catch {
         setImportPreview(null);
       }
@@ -121,12 +121,11 @@ export default function ImportExport() {
   };
 
   const handleImport = async () => {
-    const data = (window as any).__importData;
-    if (!data || data.length === 0) return;
+    if (!importData || importData.length === 0) return;
 
     setImporting(true);
     try {
-      const result = await importExportApi.importUnits(data);
+      const result = await importExportApi.importUnits(importData);
       if (result.success && result.data) {
         setImportResult(result.data);
       }
@@ -160,7 +159,7 @@ export default function ImportExport() {
     setImportFile(null);
     setImportPreview(null);
     setImportResult(null);
-    (window as any).__importData = null;
+    setImportData([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 

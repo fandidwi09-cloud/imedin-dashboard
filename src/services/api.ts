@@ -6,7 +6,8 @@
 const GAS_BASE_URL = 'https://script.google.com/macros/s/AKfycbwpQzt0VC_ymDcOY9gyLOhaygnyLIT6kuDemlUZMYJiCOZFn2c388p-k0jxfGa5xuOy/exec';
 
 // Untuk development/demo, gunakan localStorage sebagai mock database
-const USE_MOCK = false;
+// Set ke false setelah backend Google Sheet dikonfigurasi dengan benar
+const USE_MOCK = true;
 
 import type { Unit, ServiceRecord, User, LoginCredentials, DashboardStats, ApiResponse, AlertItem, UserRole } from '@/types';
 
@@ -673,9 +674,18 @@ export const importExportApi = {
       const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     }
-    const params = new URLSearchParams({ action: 'exportUnits', format, ...filters });
+    // GAS backend always returns CSV; convert to XLSX locally if needed
+    const params = new URLSearchParams({ action: 'exportUnits', ...filters });
     const response = await fetch(`${GAS_BASE_URL}?${params}`);
-    return response.blob();
+    const csvText = await response.text();
+
+    if (format === 'xlsx') {
+      const XLSX = await import('xlsx');
+      const wb = XLSX.read(csvText, { type: 'string' });
+      const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    }
+    return new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
   }
 };
 
