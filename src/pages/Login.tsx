@@ -237,6 +237,25 @@ export default function Login() {
                 >
                   {loading ? 'Memuat...' : 'Log In'}
                 </button>
+
+                {/* Divider */}
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-px bg-[#e6e6e8]"/>
+                  <span className="text-xs text-[#8b8f95]">atau</span>
+                  <div className="flex-1 h-px bg-[#e6e6e8]"/>
+                </div>
+
+                {/* Guest button */}
+                <button
+                  type="button"
+                  onClick={() => navigate('/')}
+                  className="w-full py-2.5 bg-white border border-[#e6e6e8] text-[#8b8f95] rounded-lg text-sm font-medium hover:bg-[#f7f7f5] hover:text-[#1d1d1d] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                  </svg>
+                  Lanjutkan sebagai Tamu
+                </button>
               </form>
 
               <div className="mt-4 text-center">
