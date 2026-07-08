@@ -23,7 +23,7 @@ export function useAuth() {
   const logout = useCallback(() => {
     authApi.logout();
     setUser(null);
-    window.location.href = '/imedin-dashboard/login';
+    window.location.href = window.location.pathname + '#/login';
   }, []);
 
   const hasRole = useCallback((role: UserRole | UserRole[]): boolean => {
