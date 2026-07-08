@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -6,6 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import { useUnits } from '@/hooks/useUnits';
 import { useAuth } from '@/hooks/useAuth';
 import { unitsApi } from '@/services/api';
+import { PROVINCES, getCities } from '@/data/wilayah';
 import {
   Search, Plus, Pencil, Trash2, X, MapPin, Package,
   ChevronLeft, ChevronRight, AlertCircle, Navigation, Loader2,
@@ -74,7 +75,6 @@ export default function Assets() {
   const debounce = useRef<ReturnType<typeof setTimeout>|null>(null);
 
   const { units, loading, refresh } = useUnits({ search, province, category, status });
-  const provinces = useMemo(()=>Array.from(new Set(units.map(u=>u.province).filter(Boolean))).sort(),[units]);
   const pageSize = 15;
   const totalPages = Math.ceil(units.length/pageSize);
   const paged = units.slice((page-1)*pageSize, page*pageSize);
@@ -152,7 +152,7 @@ export default function Assets() {
           </div>
           <select value={province} onChange={e=>{setProvince(e.target.value);setPage(1);}} className="min-w-[130px] px-3 py-2.5 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm focus:outline-none focus:border-[#3b82f6]">
             <option value="">Semua Provinsi</option>
-            {provinces.map(p=><option key={p} value={p}>{p}</option>)}
+            {PROVINCES.map(p=><option key={p.id} value={p.name}>{p.name}</option>)}
           </select>
           <select value={category} onChange={e=>{setCategory(e.target.value);setPage(1);}} className="min-w-[120px] px-3 py-2.5 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm focus:outline-none focus:border-[#3b82f6]">
             <option value="">Semua Kategori</option>
@@ -280,8 +280,26 @@ export default function Assets() {
                   <FInput label="Ruangan" value={formData.room||''} onChange={v=>setFormData({...formData,room:v})}/>
                   <FInput label="PIC" value={formData.pic||''} onChange={v=>setFormData({...formData,pic:v})}/>
                   <FInput label="Kontak PIC" value={formData.picContact||''} onChange={v=>setFormData({...formData,picContact:v})}/>
-                  <FInput label="Provinsi" value={formData.province} onChange={v=>setFormData({...formData,province:v})}/>
-                  <FInput label="Kota" value={formData.city} onChange={v=>setFormData({...formData,city:v})}/>
+                  {/* Provinsi dropdown */}
+                  <div>
+                    <label className="block text-xs font-medium text-[#8b8f95] mb-1">Provinsi</label>
+                    <select value={formData.province} onChange={e=>{
+                      setFormData({...formData, province:e.target.value, city:''});
+                    }} className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm focus:outline-none focus:border-[#3b82f6]">
+                      <option value="">-- Pilih Provinsi --</option>
+                      {PROVINCES.map(p=><option key={p.id} value={p.name}>{p.name}</option>)}
+                    </select>
+                  </div>
+                  {/* Kab/Kota dropdown */}
+                  <div>
+                    <label className="block text-xs font-medium text-[#8b8f95] mb-1">Kab/Kota</label>
+                    <select value={formData.city} onChange={e=>setFormData({...formData,city:e.target.value})}
+                      disabled={!formData.province}
+                      className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm focus:outline-none focus:border-[#3b82f6] disabled:opacity-50">
+                      <option value="">-- Pilih Kab/Kota --</option>
+                      {getCities(formData.province).map(c=><option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
                 </FormSection>
               </div>
 

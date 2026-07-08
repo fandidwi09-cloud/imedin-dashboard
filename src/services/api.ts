@@ -204,7 +204,9 @@ export const authApi = {
       users[idx].pin = newPin; localStorage.setItem('imedin_users', JSON.stringify(users));
       return {success:true, message:'PIN berhasil direset'};
     }
-    const res = await fetch(`${GAS_BASE_URL}?action=resetPin`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email,newPin})});
+    // Gunakan GET dengan params untuk hindari CORS preflight
+    const p = new URLSearchParams({ action:'resetPin', email, newPin });
+    const res = await fetch(`${GAS_BASE_URL}?${p}`);
     return res.json();
   }
 };
@@ -257,7 +259,8 @@ export const unitsApi = {
       units.push(newUnit); saveMockUnits(units);
       return {success:true, data:newUnit, message:'Unit berhasil ditambahkan'};
     }
-    const res = await fetch(`${GAS_BASE_URL}?action=createUnit`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+    const p = new URLSearchParams({ action:'createUnit', ...Object.fromEntries(Object.entries(data).map(([k,v])=>[k, String(v??'')])) });
+    const res = await fetch(`${GAS_BASE_URL}?${p}`);
     return res.json();
   },
   update: async (id: string, data: Partial<Unit>): Promise<ApiResponse<Unit>> => {
@@ -269,7 +272,8 @@ export const unitsApi = {
       saveMockUnits(units);
       return {success:true, data:units[idx], message:'Unit berhasil diperbarui'};
     }
-    const res = await fetch(`${GAS_BASE_URL}?action=updateUnit&id=${id}`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+    const p = new URLSearchParams({ action:'updateUnit', id, ...Object.fromEntries(Object.entries(data).map(([k,v])=>[k, String(v??'')])) });
+    const res = await fetch(`${GAS_BASE_URL}?${p}`);
     return res.json();
   },
   delete: async (id: string): Promise<ApiResponse<void>> => {
@@ -312,7 +316,21 @@ export const activitiesApi = {
       if (idx!==-1) { units[idx].lastServiceDate=data.date; if(data.nextSchedule) units[idx].nextMaintenanceDate=data.nextSchedule; saveMockUnits(units); }
       return {success:true, data:newAct, message:'Aktivitas berhasil ditambahkan'};
     }
-    const res = await fetch(`${GAS_BASE_URL}?action=createActivity`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+    // Kirim sebagai GET params untuk hindari CORS preflight
+    const p = new URLSearchParams({
+      action: 'createActivity',
+      unitId: data.unitId,
+      serialNumber: data.serialNumber,
+      type: data.type,
+      date: data.date,
+      technicianName: data.technicianName,
+      description: data.description,
+      partsReplaced: data.partsReplaced || '',
+      cost: String(data.cost || 0),
+      nextSchedule: data.nextSchedule || '',
+      notes: data.notes || ''
+    });
+    const res = await fetch(`${GAS_BASE_URL}?${p}`);
     return res.json();
   }
 };

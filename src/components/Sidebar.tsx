@@ -35,12 +35,14 @@ const roleConfig: Record<string, { label: string; color: string; icon: typeof Sh
   guest:   { label: 'Guest',    color: 'bg-gray-500/20 text-gray-400',    icon: User },
 };
 
+import { useSidebar } from '@/hooks/useSidebar';
+
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, hasRole, isAuthenticated } = useAuth();
   const { alerts } = useDashboard();
-  const [collapsed, setCollapsed] = useState(false);
+  const { collapsed, setCollapsed } = useSidebar();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const criticalAlerts = alerts.filter(a => a.severity === 'critical').slice(0, 3);
