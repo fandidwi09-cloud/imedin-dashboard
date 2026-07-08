@@ -14,27 +14,44 @@ import {
 import type { Unit } from '@/types';
 
 const serviceTypeColors: Record<string, string> = {
-  installation: 'bg-blue-50 text-blue-700 border-blue-200',
-  routine: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  repair: 'bg-red-50 text-red-700 border-red-200',
-  warranty: 'bg-amber-50 text-amber-700 border-amber-200',
-  calibration: 'bg-purple-50 text-purple-700 border-purple-200'
+  installation:            'bg-blue-50 text-blue-700 border-blue-200',
+  preventive_maintenance:  'bg-emerald-50 text-emerald-700 border-emerald-200',
+  repair:                  'bg-red-50 text-red-700 border-red-200',
+  firmware_upgrade:        'bg-purple-50 text-purple-700 border-purple-200',
+  spare_part:              'bg-amber-50 text-amber-700 border-amber-200',
+  relocation:              'bg-orange-50 text-orange-700 border-orange-200',
+  other:                   'bg-gray-50 text-gray-600 border-gray-200',
+  // legacy fallbacks
+  routine:                 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  warranty:                'bg-amber-50 text-amber-700 border-amber-200',
+  calibration:             'bg-purple-50 text-purple-700 border-purple-200',
 };
 
 const serviceTypeLabels: Record<string, string> = {
-  installation: 'Installation',
-  routine: 'Routine Maintenance',
-  repair: 'Repair',
-  warranty: 'Warranty Claim',
-  calibration: 'Calibration'
+  installation:           'Instalasi',
+  preventive_maintenance: 'Preventive Maintenance',
+  repair:                 'Perbaikan',
+  firmware_upgrade:       'Upgrade Firmware',
+  spare_part:             'Penggantian Sparepart',
+  relocation:             'Relokasi',
+  other:                  'Lainnya',
+  // legacy fallbacks
+  routine:                'Routine Maintenance',
+  warranty:               'Warranty Claim',
+  calibration:            'Kalibrasi',
 };
 
 const timelineColors: Record<string, string> = {
-  installation: 'bg-blue-500',
-  routine: 'bg-emerald-500',
-  repair: 'bg-red-500',
-  warranty: 'bg-amber-500',
-  calibration: 'bg-purple-500'
+  installation:           'bg-blue-500',
+  preventive_maintenance: 'bg-emerald-500',
+  repair:                 'bg-red-500',
+  firmware_upgrade:       'bg-purple-500',
+  spare_part:             'bg-amber-500',
+  relocation:             'bg-orange-500',
+  other:                  'bg-gray-400',
+  routine:                'bg-emerald-500',
+  warranty:               'bg-amber-500',
+  calibration:            'bg-purple-500',
 };
 
 export default function ServiceHistory() {

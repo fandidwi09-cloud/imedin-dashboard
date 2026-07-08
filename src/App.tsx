@@ -43,6 +43,7 @@ function AppRoutes() {
       <Route path="/activities" element={
         <ProtectedRoute><Layout><Activities /></Layout></ProtectedRoute>
       } />
+      <Route path="/service-history" element={<Navigate to="/activities" replace />} />
 
       {/* QR Scanner — teknisi + admin */}
       <Route path="/qr-scanner" element={

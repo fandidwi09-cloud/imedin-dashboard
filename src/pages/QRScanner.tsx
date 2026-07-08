@@ -416,10 +416,13 @@ export default function QRScanner() {
                   onChange={e => setServiceForm({ ...serviceForm, type: e.target.value as import('@/types').ActivityType })}
                   className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6]"
                 >
-                  <option value="routine">Routine Maintenance</option>
-                  <option value="repair">Repair</option>
-                  <option value="warranty">Warranty Claim</option>
-                  <option value="calibration">Calibration</option>
+                  <option value="preventive_maintenance">Preventive Maintenance</option>
+                  <option value="repair">Perbaikan</option>
+                  <option value="installation">Instalasi</option>
+                  <option value="firmware_upgrade">Upgrade Firmware</option>
+                  <option value="spare_part">Penggantian Sparepart</option>
+                  <option value="relocation">Relokasi</option>
+                  <option value="other">Lainnya</option>
                 </select>
               </div>
               <div>
@@ -528,11 +531,16 @@ function ServiceHistoryMini({ unitId, serialNumber }: { unitId: string; serialNu
   }, [unitId, serialNumber]);
 
   const serviceTypeColors: Record<string, string> = {
-    installation: 'bg-blue-50 text-blue-700',
-    routine: 'bg-emerald-50 text-emerald-700',
-    repair: 'bg-red-50 text-red-700',
-    warranty: 'bg-amber-50 text-amber-700',
-    calibration: 'bg-purple-50 text-purple-700'
+    installation:           'bg-blue-50 text-blue-700',
+    preventive_maintenance: 'bg-emerald-50 text-emerald-700',
+    repair:                 'bg-red-50 text-red-700',
+    firmware_upgrade:       'bg-purple-50 text-purple-700',
+    spare_part:             'bg-amber-50 text-amber-700',
+    relocation:             'bg-orange-50 text-orange-700',
+    other:                  'bg-gray-50 text-gray-600',
+    routine:                'bg-emerald-50 text-emerald-700',
+    warranty:               'bg-amber-50 text-amber-700',
+    calibration:            'bg-purple-50 text-purple-700',
   };
 
   return (
