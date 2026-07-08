@@ -4,10 +4,13 @@
     <meta charset="utf-8" />
     <title>IMEDIN Dashboard</title>
     <script>
-      // Redirect semua 404 ke index.html dengan path tersimpan di sessionStorage
-      var path = window.location.pathname;
-      sessionStorage.setItem('redirectPath', path);
-      window.location.replace('/imedin-dashboard/');
+      // Simpan path lengkap ke sessionStorage lalu redirect ke root
+      var l = window.location;
+      sessionStorage.setItem(
+        'spa_redirect',
+        l.pathname.slice(1) + (l.search ? l.search : '') + (l.hash ? l.hash : '')
+      );
+      l.replace(l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') + '/imedin-dashboard/');
     </script>
   </head>
   <body></body>
