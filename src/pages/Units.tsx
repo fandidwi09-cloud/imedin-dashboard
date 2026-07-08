@@ -1,7 +1,10 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useUnits } from '@/hooks/useUnits';
 import { useAuth } from '@/hooks/useAuth';
 import { unitsApi } from '@/services/api';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import {
   Search,
   Plus,
@@ -18,6 +21,18 @@ import {
   Loader2
 } from 'lucide-react';
 import type { Unit, UnitCategory, UnitStatus } from '@/types';
+
+// Fix Leaflet default marker icons
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
 
 const categoryOptions: { value: UnitCategory; label: string }[] = [
   { value: 'dialysis', label: 'Dialysis' },
@@ -63,6 +78,24 @@ const emptyUnit: Omit<Unit, 'id' | 'createdAt' | 'updatedAt'> = {
   notes: ''
 };
 
+function LocationMarker({ position, onLocationSelect }: { position: [number, number] | null, onLocationSelect: (lat: number, lng: number) => void }) {
+  const map = useMap();
+
+  useMapEvents({
+    click(e) {
+      onLocationSelect(e.latlng.lat, e.latlng.lng);
+    },
+  });
+
+  useEffect(() => {
+    if (position) {
+      map.setView(position, map.getZoom());
+    }
+  }, [position, map]);
+
+  return position ? <Marker position={position} /> : null;
+}
+
 export default function Units() {
   const [search, setSearch] = useState('');
   const [provinceFilter, setProvinceFilter] = useState('');
@@ -96,6 +129,26 @@ export default function Units() {
       } catch { setAddressSuggestions([]); }
       finally { setGeocodeLoading(false); }
     }, 500);
+  };
+
+  const reverseGeocode = async (lat: number, lon: number) => {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`);
+      const data = await res.json();
+      const city = data.address?.city || data.address?.town || data.address?.county || '';
+      const province = data.address?.state || '';
+      setFormData(prev => ({
+        ...prev,
+        latitude: lat,
+        longitude: lon,
+        address: data.display_name || prev.address,
+        city: city || prev.city,
+        province: province || prev.province,
+      }));
+      setAddressSearch(data.display_name || '');
+    } catch (err) {
+      console.error('Reverse geocoding error:', err);
+    }
   };
 
   const selectAddress = (item: typeof addressSuggestions[0]) => {
@@ -588,13 +641,43 @@ export default function Units() {
                   )}
                 </div>
 
-                {/* Koordinat hasil geocoding — readonly, tampil sebagai info */}
-                {(formData.latitude !== 0 || formData.longitude !== 0) && (
-                  <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-700">
-                    <MapPin size={14} />
-                    Koordinat: {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
+                {/* Interactive Map */}
+                <div className="mb-4 bg-[#f7f7f5] rounded-lg border border-[#e6e6e8] overflow-hidden">
+                  <div className="h-64 w-full relative">
+                    <MapContainer
+                      center={[formData.latitude || -2.5489, formData.longitude || 118.0149]}
+                      zoom={formData.latitude ? 15 : 5}
+                      style={{ height: '100%', width: '100%' }}
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <LocationMarker
+                        position={formData.latitude && formData.longitude ? [formData.latitude, formData.longitude] : null}
+                        onLocationSelect={reverseGeocode}
+                      />
+                    </MapContainer>
+                    <div className="absolute top-2 right-2 z-[1000] bg-white/90 backdrop-blur-sm px-2 py-1 rounded border border-[#e6e6e8] shadow-sm pointer-events-none">
+                      <p className="text-[10px] text-[#8b8f95] font-medium">Klik pada peta untuk set lokasi</p>
+                    </div>
                   </div>
-                )}
+                  {(formData.latitude !== 0 || formData.longitude !== 0) && (
+                    <div className="px-3 py-2 bg-emerald-50 border-t border-emerald-100 text-[11px] text-emerald-700 flex justify-between items-center">
+                      <span className="flex items-center gap-1.5 font-medium">
+                        <MapPin size={12} />
+                        {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, latitude: 0, longitude: 0 }))}
+                        className="text-emerald-600 hover:text-emerald-800 font-semibold"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  )}
+                </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
                   <div>
