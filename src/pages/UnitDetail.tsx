@@ -2,11 +2,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { unitsApi, activitiesApi } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
-import type { Unit, Activity, ActivityType } from '@/types';
+import { PROVINCES, getCities } from '@/data/wilayah';
+import type { Unit, Activity, ActivityType, UnitStatus } from '@/types';
 import {
   ArrowLeft, MapPin, Phone, User, Building2, Calendar, Shield,
   Wrench, QrCode, ExternalLink, Plus, X,
-  Package, Loader2, AlertCircle, CheckCircle2, Clock, FileText
+  Package, Loader2, AlertCircle, CheckCircle2, Clock, FileText, Link, Trash2
 } from 'lucide-react';
 
 const statusColors: Record<string, string> = {
@@ -42,14 +43,29 @@ export default function UnitDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddActivity, setShowAddActivity] = useState(false);
+  const [showEditUnit, setShowEditUnit] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'timeline' | 'docs'>('info');
+  const [docUrl, setDocUrl] = useState('');
+  const [docName, setDocName] = useState('');
+  const [docList, setDocList] = useState<{name:string;url:string}[]>([]);
+  const [savingDoc, setSavingDoc] = useState(false);
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
     Promise.all([unitsApi.getById(id), activitiesApi.getAll(id)])
       .then(([uRes, aRes]) => {
-        if (uRes.success && uRes.data) setUnit(uRes.data);
+        if (uRes.success && uRes.data) {
+          setUnit(uRes.data);
+          // Load dokumen dari documentUrls
+          try {
+            const raw = uRes.data.documentUrls;
+            if (raw && Array.isArray(raw) && raw.length > 0) {
+              const parsed = JSON.parse(raw[0] as unknown as string);
+              if (Array.isArray(parsed)) setDocList(parsed);
+            }
+          } catch { /* kosong */ }
+        }
         else setError('Unit tidak ditemukan');
         if (aRes.success && aRes.data) setActivities(aRes.data);
       })
@@ -94,7 +110,7 @@ export default function UnitDetail() {
           <p className="text-sm text-[#8b8f95] mt-0.5">{unit.facilityName || unit.customerName} · {unit.city}, {unit.province}</p>
         </div>
         {canEdit && (
-          <button onClick={()=>navigate(`/assets/${unit.id}/edit`)} className="hidden sm:flex items-center gap-2 px-3 py-2 border border-[#e6e6e8] rounded-lg text-sm text-[#8b8f95] hover:bg-[#f7f7f5] transition-colors">
+          <button onClick={()=>setShowEditUnit(true)} className="hidden sm:flex items-center gap-2 px-3 py-2 border border-[#e6e6e8] rounded-lg text-sm text-[#8b8f95] hover:bg-[#f7f7f5] transition-colors">
             <Wrench size={15}/> Edit
           </button>
         )}
@@ -261,9 +277,73 @@ export default function UnitDetail() {
                 <p>Login untuk melihat dokumen</p>
               </div>
             ) : (
-              <div className="text-center py-8 text-[#8b8f95] text-sm">
-                <FileText size={32} className="mx-auto mb-2 text-[#e6e6e8]"/>
-                <p>Belum ada dokumen terlampir</p>
+              <div className="space-y-4">
+                {/* Form tambah dokumen */}
+                {canEdit && (
+                  <div className="border border-[#e6e6e8] rounded-xl p-4 space-y-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-[#8b8f95]">Tambah Dokumen</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-[#8b8f95] mb-1">Nama Dokumen</label>
+                        <input value={docName} onChange={e=>setDocName(e.target.value)} placeholder="Contoh: Manual Book, Sertifikat, dll"
+                          className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm focus:outline-none focus:border-[#3b82f6]"/>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-[#8b8f95] mb-1">URL Dokumen (Google Drive / Link)</label>
+                        <div className="flex gap-2">
+                          <input value={docUrl} onChange={e=>setDocUrl(e.target.value)} placeholder="https://drive.google.com/..."
+                            className="flex-1 px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm focus:outline-none focus:border-[#3b82f6]"/>
+                          <button disabled={!docUrl||!docName||savingDoc} onClick={async()=>{
+                            if(!docUrl||!docName) return;
+                            setSavingDoc(true);
+                            const newList = [...docList, {name:docName, url:docUrl}];
+                            const docStr = JSON.stringify(newList);
+                            const r = await unitsApi.update(unit.id, {documentUrls: [docStr] as unknown as string[]});
+                            if(r.success){ setDocList(newList); setDocUrl(''); setDocName(''); }
+                            setSavingDoc(false);
+                          }} className="px-3 py-2 bg-[#3b82f6] text-white rounded-lg text-sm hover:bg-blue-600 disabled:opacity-50 flex-shrink-0">
+                            {savingDoc ? <Loader2 size={14} className="animate-spin"/> : 'Simpan'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-[#8b8f95]">Upload dokumen ke Google Drive terlebih dahulu, lalu paste link-nya di sini.</p>
+                  </div>
+                )}
+
+                {/* Daftar dokumen */}
+                {docList.length === 0 ? (
+                  <div className="text-center py-8 text-[#8b8f95] text-sm">
+                    <FileText size={32} className="mx-auto mb-2 text-[#e6e6e8]"/>
+                    <p>Belum ada dokumen terlampir</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {docList.map((doc, i) => (
+                      <div key={i} className="flex items-center gap-3 p-3 bg-[#f7f7f5] rounded-lg border border-[#e6e6e8] group">
+                        <FileText size={18} className="text-[#3b82f6] flex-shrink-0"/>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-[#1d1d1d] truncate">{doc.name}</p>
+                          <p className="text-xs text-[#8b8f95] truncate">{doc.url}</p>
+                        </div>
+                        <a href={doc.url} target="_blank" rel="noopener noreferrer"
+                          className="p-1.5 rounded-lg hover:bg-blue-100 text-[#3b82f6] transition-colors flex-shrink-0" title="Buka dokumen">
+                          <Link size={15}/>
+                        </a>
+                        {canEdit && (
+                          <button onClick={async()=>{
+                            const newList = docList.filter((_,idx)=>idx!==i);
+                            const docStr = JSON.stringify(newList);
+                            await unitsApi.update(unit.id, {documentUrls: [docStr] as unknown as string[]});
+                            setDocList(newList);
+                          }} className="p-1.5 rounded-lg hover:bg-red-100 text-[#8b8f95] hover:text-red-500 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100">
+                            <Trash2 size={15}/>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -272,6 +352,9 @@ export default function UnitDetail() {
 
       {/* Add Activity Modal */}
       {showAddActivity && <AddActivityModal unit={unit} onClose={()=>setShowAddActivity(false)} onSaved={(act)=>{setActivities(p=>[act,...p]); setShowAddActivity(false); setActiveTab('timeline');}}/>}
+
+      {/* Edit Unit Modal */}
+      {showEditUnit && <EditUnitModal unit={unit} onClose={()=>setShowEditUnit(false)} onSaved={(updated)=>{setUnit(updated); setShowEditUnit(false);}}/>}
     </div>
   );
 }
@@ -356,6 +439,106 @@ function AddActivityModal({ unit, onClose, onSaved }: { unit: Unit; onClose: ()=
             <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 border border-[#e6e6e8] rounded-lg text-sm text-[#8b8f95] hover:bg-[#f7f7f5]">Batal</button>
             <button type="submit" disabled={saving} className="flex-1 px-4 py-2.5 bg-[#3b82f6] text-white rounded-lg text-sm font-medium hover:bg-blue-600 disabled:opacity-50">
               {saving ? <Loader2 size={16} className="animate-spin mx-auto"/> : 'Simpan'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// Edit Unit Modal
+function EditUnitModal({ unit, onClose, onSaved }: { unit: Unit; onClose: ()=>void; onSaved: (u: Unit)=>void }) {
+  const [form, setForm] = useState({ ...unit });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.serialNumber || !form.productName) { setError('Serial Number dan Product Name wajib'); return; }
+    setSaving(true);
+    try {
+      const r = await unitsApi.update(unit.id, form);
+      if (r.success && r.data) onSaved(r.data);
+      else if (r.success) onSaved({ ...unit, ...form });
+      else setError(r.message || 'Gagal menyimpan');
+    } catch { setError('Terjadi kesalahan'); }
+    finally { setSaving(false); }
+  };
+
+  const F = ({ label, k, placeholder }: { label: string; k: keyof Unit; placeholder?: string }) => (
+    <div>
+      <label className="block text-xs font-medium text-[#8b8f95] mb-1">{label}</label>
+      <input value={String(form[k] ?? '')} onChange={e => setForm({ ...form, [k]: e.target.value })} placeholder={placeholder}
+        className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm focus:outline-none focus:border-[#3b82f6]"/>
+    </div>
+  );
+
+  const cities = getCities(form.province);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white flex items-center justify-between px-5 py-4 border-b border-[#e6e6e8] z-10">
+          <h3 className="font-semibold text-[#1d1d1d]">Edit Unit — {unit.serialNumber}</h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#f7f7f5]"><X size={18} className="text-[#8b8f95]"/></button>
+        </div>
+        {error && <div className="mx-5 mt-3 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm flex items-center gap-2"><AlertCircle size={14}/>{error}</div>}
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <F label="Serial Number *" k="serialNumber"/>
+            <F label="Product Name *" k="productName"/>
+            <F label="Brand" k="brand"/>
+            <F label="Model" k="model"/>
+            <F label="Manufacturer" k="manufacturer"/>
+            <div>
+              <label className="block text-xs font-medium text-[#8b8f95] mb-1">Category</label>
+              <select value={form.category} onChange={e=>setForm({...form, category: e.target.value as Unit['category']})}
+                className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm focus:outline-none focus:border-[#3b82f6]">
+                {['dialysis','laboratory','imaging','ventilator','monitor','other'].map(c=><option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <F label="Nama Fasilitas" k="facilityName"/>
+            <F label="Ruangan" k="room"/>
+            <F label="PIC" k="pic"/>
+            <F label="Kontak PIC" k="picContact"/>
+            <div>
+              <label className="block text-xs font-medium text-[#8b8f95] mb-1">Provinsi</label>
+              <select value={form.province} onChange={e=>setForm({...form, province:e.target.value, city:''})}
+                className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm focus:outline-none focus:border-[#3b82f6]">
+                <option value="">-- Pilih Provinsi --</option>
+                {PROVINCES.map(p=><option key={p.id} value={p.name}>{p.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[#8b8f95] mb-1">Kab/Kota</label>
+              <select value={form.city} onChange={e=>setForm({...form, city:e.target.value})} disabled={!form.province}
+                className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm focus:outline-none focus:border-[#3b82f6] disabled:opacity-50">
+                <option value="">-- Pilih Kab/Kota --</option>
+                {cities.map(c=><option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div className="md:col-span-2"><F label="Alamat" k="address"/></div>
+            <div>
+              <label className="block text-xs font-medium text-[#8b8f95] mb-1">Status</label>
+              <select value={form.status} onChange={e=>setForm({...form, status: e.target.value as UnitStatus})}
+                className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm focus:outline-none focus:border-[#3b82f6]">
+                <option value="active">Aktif</option>
+                <option value="maintenance">Perlu Perhatian</option>
+                <option value="repair">Dalam Perbaikan</option>
+                <option value="inactive">Tidak Aktif</option>
+              </select>
+            </div>
+            <F label="Distributor" k="distributorName"/>
+            <F label="Tanggal Instalasi" k="installationDate" placeholder="YYYY-MM-DD"/>
+            <F label="Garansi Berakhir" k="warrantyEndDate" placeholder="YYYY-MM-DD"/>
+            <F label="PM Berikutnya" k="nextMaintenanceDate" placeholder="YYYY-MM-DD"/>
+            <div className="md:col-span-2"><F label="Catatan" k="notes"/></div>
+          </div>
+          <div className="flex gap-3 pt-2 border-t border-[#e6e6e8]">
+            <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 border border-[#e6e6e8] rounded-lg text-sm text-[#8b8f95] hover:bg-[#f7f7f5]">Batal</button>
+            <button type="submit" disabled={saving} className="flex-1 px-4 py-2.5 bg-[#3b82f6] text-white rounded-lg text-sm font-medium hover:bg-blue-600 disabled:opacity-50">
+              {saving ? <Loader2 size={15} className="animate-spin mx-auto"/> : 'Simpan Perubahan'}
             </button>
           </div>
         </form>
