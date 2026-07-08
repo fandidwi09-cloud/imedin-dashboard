@@ -2,7 +2,7 @@
 // IMEDIN After Sales Monitoring System - API Service v2
 // ============================================================
 
-const GAS_BASE_URL = 'https://script.google.com/macros/s/AKfycbwpQzt0VC_ymDcOY9gyLOhaygnyLIT6kuDemlUZMYJiCOZFn2c388p-k0jxfGa5xuOy/exec';
+const GAS_BASE_URL = 'https://script.google.com/macros/s/AKfycbwe76mqVAfXAdzYR0kPxH17Fq1Mrimd_WwjhYH06vZMwT_Ui2EVxNTsEtMcrXFLPBvz/exec';
 const USE_MOCK = false;
 
 import type {
