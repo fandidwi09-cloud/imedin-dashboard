@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useUnits } from '@/hooks/useUnits';
 import { useAuth } from '@/hooks/useAuth';
-import { useRegions, Province, Regency, District, Village } from '@/hooks/useRegions';
+import { useRegions, type Regency, type District, type Village } from '@/hooks/useRegions';
 import { unitsApi } from '@/services/api';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
