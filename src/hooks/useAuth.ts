@@ -14,9 +14,7 @@ export function useAuth() {
 
   const login = useCallback(async (email: string, pin: string) => {
     const result = await authApi.login({ email, pin });
-    if (result.success && result.data) {
-      setUser(result.data);
-    }
+    if (result.success && result.data) setUser(result.data);
     return result;
   }, []);
 
@@ -26,11 +24,28 @@ export function useAuth() {
     window.location.href = window.location.pathname + '#/login';
   }, []);
 
+  // hasRole: guest (tidak login) hanya bisa akses role 'guest'.
+  // Kalau role yang dicek adalah ['admin','teknisi','viewer','guest'] maka semua bisa akses.
   const hasRole = useCallback((role: UserRole | UserRole[]): boolean => {
-    if (!user) return false;
-    if (Array.isArray(role)) return role.includes(user.role);
-    return user.role === role;
+    const roles = Array.isArray(role) ? role : [role];
+    if (!user) {
+      // Belum login = guest
+      return roles.includes('guest');
+    }
+    return roles.includes(user.role as UserRole);
   }, [user]);
 
-  return { user, loading, login, logout, hasRole, isAuthenticated: !!user };
+  // isGuest: true kalau belum login
+  const isGuest = !user;
+
+  return {
+    user,
+    loading,
+    login,
+    logout,
+    hasRole,
+    isAuthenticated: !!user,
+    isGuest,
+    role: user?.role ?? 'guest' as UserRole,
+  };
 }

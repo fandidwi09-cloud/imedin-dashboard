@@ -147,7 +147,7 @@ export default function MapView() {
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow" />
-            <span>Overdue ({validUnits.filter(u => u.status === 'overdue').length})</span>
+            <span>Overdue ({validUnits.filter(u => u.status === 'repair').length})</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-full bg-gray-400 border-2 border-white shadow" />
@@ -190,7 +190,7 @@ export default function MapView() {
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium ${
                         unit.status === 'active' ? 'bg-emerald-50 text-emerald-700' :
                         unit.status === 'maintenance' ? 'bg-amber-50 text-amber-700' :
-                        unit.status === 'overdue' ? 'bg-red-50 text-red-700' :
+                        unit.status === 'repair' ? 'bg-red-50 text-red-700' :
                         'bg-gray-50 text-gray-600'
                       }`}>
                         {statusLabels[unit.status]}

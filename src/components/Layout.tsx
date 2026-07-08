@@ -9,20 +9,14 @@ export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const isLoginPage = location.pathname === '/login';
 
-  if (isLoginPage) {
-    return <>{children}</>;
-  }
+  if (isLoginPage) return <>{children}</>;
 
   return (
     <div className="flex min-h-screen bg-[#f7f7f5]">
       <Sidebar />
-      {/* 
-        Mobile: tidak ada margin (sidebar overlay)
-        Tablet (lg): margin 260px untuk sidebar expanded
-        Desktop dengan sidebar collapsed ditangani via CSS variable jika perlu
-      */}
-      <main className="flex-1 min-h-screen w-full lg:ml-[260px]">
-        <div className="p-4 md:p-6 max-w-[1600px] mx-auto pt-16 lg:pt-6">
+      <main className="flex-1 min-h-screen w-full lg:ml-[240px]">
+        {/* pt-16: ruang hamburger mobile, pb-20: ruang bottom nav mobile */}
+        <div className="p-4 md:p-6 max-w-[1600px] mx-auto pt-16 lg:pt-6 pb-24 lg:pb-6">
           {children}
         </div>
       </main>

@@ -13,7 +13,7 @@ import {
   X,
   RotateCcw
 } from 'lucide-react';
-import type { Unit, ServiceRecord } from '@/types';
+import type { Unit } from '@/types';
 
 export default function QRScanner() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -25,12 +25,12 @@ export default function QRScanner() {
   const [scannedCode, setScannedCode] = useState('');
   const [serviceLogOpen, setServiceLogOpen] = useState(false);
   const [serviceForm, setServiceForm] = useState({
-    serviceType: 'routine' as const,
+    type: 'preventive_maintenance' as import('@/types').ActivityType,
     description: '',
     technicianName: '',
     partsReplaced: '',
     cost: '',
-    nextServiceDate: '',
+    nextSchedule: '',
     notes: ''
   });
   const [savingService, setSavingService] = useState(false);
@@ -111,7 +111,7 @@ export default function QRScanner() {
       if (code && code.data) {
         setScannedCode(code.data);
         stopCamera();
-        const result = await unitsApi.getBySerialNumber(code.data);
+        const result = await unitsApi.getBySerial(code.data);
         if (result.success && result.data) {
           setFoundUnit(result.data);
         } else {
@@ -139,7 +139,7 @@ export default function QRScanner() {
   const handleManualSearch = async () => {
     if (!manualInput.trim()) return;
     setScannedCode(manualInput);
-    const result = await unitsApi.getBySerialNumber(manualInput);
+    const result = await unitsApi.getBySerial(manualInput);
     if (result.success && result.data) {
       setFoundUnit(result.data);
     } else {
@@ -155,23 +155,23 @@ export default function QRScanner() {
       await servicesApi.create({
         unitId: foundUnit.id,
         serialNumber: foundUnit.serialNumber,
-        serviceType: serviceForm.serviceType,
-        serviceDate: new Date().toISOString().split('T')[0],
+        type: serviceForm.type as import('@/types').ActivityType,
+        date: new Date().toISOString().split('T')[0],
         technicianName: serviceForm.technicianName,
         description: serviceForm.description,
         partsReplaced: serviceForm.partsReplaced,
         cost: parseFloat(serviceForm.cost) || 0,
-        nextServiceDate: serviceForm.nextServiceDate,
+        nextSchedule: serviceForm.nextSchedule,
         notes: serviceForm.notes
       });
       setServiceLogOpen(false);
       setServiceForm({
-        serviceType: 'routine',
+        type: 'preventive_maintenance',
         description: '',
         technicianName: '',
         partsReplaced: '',
         cost: '',
-        nextServiceDate: '',
+        nextSchedule: '',
         notes: ''
       });
     } catch {
@@ -367,10 +367,10 @@ export default function QRScanner() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Calendar size={16} className={foundUnit.status === 'overdue' ? 'text-red-500' : 'text-emerald-500'} />
+                  <Calendar size={16} className={foundUnit.status === 'repair' ? 'text-red-500' : 'text-emerald-500'} />
                   <div>
                     <p className="text-xs text-[#8b8f95]">Maintenance Berikutnya</p>
-                    <p className={`text-sm font-medium ${foundUnit.status === 'overdue' ? 'text-red-600' : 'text-[#1d1d1d]'}`}>
+                    <p className={`text-sm font-medium ${foundUnit.status === 'repair' ? 'text-red-600' : 'text-[#1d1d1d]'}`}>
                       {foundUnit.nextMaintenanceDate}
                     </p>
                   </div>
@@ -412,8 +412,8 @@ export default function QRScanner() {
               <div>
                 <label className="block text-xs font-medium text-[#8b8f95] mb-1">Service Type</label>
                 <select
-                  value={serviceForm.serviceType}
-                  onChange={e => setServiceForm({ ...serviceForm, serviceType: e.target.value as typeof serviceForm.serviceType })}
+                  value={serviceForm.type}
+                  onChange={e => setServiceForm({ ...serviceForm, type: e.target.value as import('@/types').ActivityType })}
                   className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6]"
                 >
                   <option value="routine">Routine Maintenance</option>
@@ -468,8 +468,8 @@ export default function QRScanner() {
                 <label className="block text-xs font-medium text-[#8b8f95] mb-1">Next Service Date</label>
                 <input
                   type="date"
-                  value={serviceForm.nextServiceDate}
-                  onChange={e => setServiceForm({ ...serviceForm, nextServiceDate: e.target.value })}
+                  value={serviceForm.nextSchedule}
+                  onChange={e => setServiceForm({ ...serviceForm, nextSchedule: e.target.value })}
                   className="w-full px-3 py-2 bg-[#f7f7f5] border border-[#e6e6e8] rounded-lg text-sm text-[#1d1d1d] focus:outline-none focus:border-[#3b82f6]"
                 />
               </div>
@@ -515,11 +515,11 @@ export default function QRScanner() {
 }
 
 function ServiceHistoryMini({ unitId, serialNumber }: { unitId: string; serialNumber: string }) {
-  const [services, setServices] = useState<ServiceRecord[]>([]);
+  const [services, setServices] = useState<import('@/types').Activity[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    servicesApi.getBySerialNumber(serialNumber).then(result => {
+    servicesApi.getBySerialNumber(serialNumber).then((result: import('@/types').ApiResponse<import('@/types').Activity[]>) => {
       if (result.success && result.data) {
         setServices(result.data.slice(0, 5));
       }
@@ -554,10 +554,10 @@ function ServiceHistoryMini({ unitId, serialNumber }: { unitId: string; serialNu
           {services.map(service => (
             <div key={service.id} className="p-3 rounded-lg bg-[#f7f7f5] border border-[#e6e6e8]">
               <div className="flex items-center justify-between mb-1">
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${serviceTypeColors[service.serviceType] || 'bg-gray-50 text-gray-600'}`}>
-                  {service.serviceType}
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${serviceTypeColors[service.type] || 'bg-gray-50 text-gray-600'}`}>
+                  {service.type}
                 </span>
-                <span className="text-xs text-[#8b8f95]">{service.serviceDate}</span>
+                <span className="text-xs text-[#8b8f95]">{service.date}</span>
               </div>
               <p className="text-sm text-[#1d1d1d] truncate">{service.description}</p>
               <p className="text-xs text-[#8b8f95]">{service.technicianName}</p>

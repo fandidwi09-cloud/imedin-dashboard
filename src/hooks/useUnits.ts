@@ -11,7 +11,7 @@ export function useUnits(filters?: { search?: string; province?: string; categor
     setLoading(true);
     setError(null);
     try {
-      const result = await unitsApi.getAll(filters);
+      const result = await unitsApi.getAll(filters as import('@/types').GlobalFilter | undefined);
       if (result.success && result.data) {
         setUnits(result.data);
       } else {

@@ -11,7 +11,7 @@ import {
   ChevronUp,
   Package
 } from 'lucide-react';
-import type { ServiceRecord, Unit } from '@/types';
+import type { Unit } from '@/types';
 
 const serviceTypeColors: Record<string, string> = {
   installation: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -40,7 +40,7 @@ const timelineColors: Record<string, string> = {
 export default function ServiceHistory() {
   const [serialNumber, setSerialNumber] = useState('');
   const [unit, setUnit] = useState<Unit | null>(null);
-  const [services, setServices] = useState<ServiceRecord[]>([]);
+  const [services, setServices] = useState<import('@/types').Activity[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedService, setExpandedService] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -50,7 +50,7 @@ export default function ServiceHistory() {
     setLoading(true);
     setError('');
     try {
-      const unitResult = await unitsApi.getBySerialNumber(serialNumber);
+      const unitResult = await unitsApi.getBySerial(serialNumber);
       if (unitResult.success && unitResult.data) {
         setUnit(unitResult.data);
         const servicesResult = await servicesApi.getBySerialNumber(serialNumber);
@@ -184,7 +184,7 @@ export default function ServiceHistory() {
                       <div key={service.id} className="relative flex gap-4">
                         {/* Timeline node */}
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 z-10 border-4 border-white ${
-                          isLatest ? timelineColors[service.serviceType] : 'bg-[#e6e6e8]'
+                          isLatest ? timelineColors[service.type] : 'bg-[#e6e6e8]'
                         }`}>
                           <Wrench size={16} className="text-white" />
                         </div>
@@ -195,8 +195,8 @@ export default function ServiceHistory() {
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${serviceTypeColors[service.serviceType]}`}>
-                                    {serviceTypeLabels[service.serviceType]}
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${serviceTypeColors[service.type]}`}>
+                                    {serviceTypeLabels[service.type]}
                                   </span>
                                   {isLatest && (
                                     <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
@@ -217,16 +217,16 @@ export default function ServiceHistory() {
                             <div className="flex flex-wrap gap-4 mt-2 text-xs text-[#8b8f95]">
                               <span className="flex items-center gap-1">
                                 <Calendar size={12} />
-                                {service.serviceDate}
+                                {service.date}
                               </span>
                               <span className="flex items-center gap-1">
                                 <User size={12} />
                                 {service.technicianName}
                               </span>
-                              {service.cost > 0 && (
+                              {(service.cost ?? 0) > 0 && (
                                 <span className="flex items-center gap-1">
                                   <DollarSign size={12} />
-                                  Rp {service.cost.toLocaleString('id-ID')}
+                                  Rp {(service.cost ?? 0).toLocaleString('id-ID')}
                                 </span>
                               )}
                             </div>
@@ -239,10 +239,10 @@ export default function ServiceHistory() {
                                     <p className="text-sm text-[#1d1d1d]">{service.partsReplaced}</p>
                                   </div>
                                 )}
-                                {service.nextServiceDate && (
+                                {service.nextSchedule && (
                                   <div>
                                     <p className="text-xs text-[#8b8f95] uppercase tracking-wider mb-0.5">Next Service</p>
-                                    <p className="text-sm text-[#1d1d1d]">{service.nextServiceDate}</p>
+                                    <p className="text-sm text-[#1d1d1d]">{service.nextSchedule}</p>
                                   </div>
                                 )}
                                 {service.notes && (

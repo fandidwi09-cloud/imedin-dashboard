@@ -5,10 +5,12 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import MapView from '@/pages/MapView';
-import Units from '@/pages/Units';
+import Assets from '@/pages/Assets';
+import UnitDetail from '@/pages/UnitDetail';
+import Activities from '@/pages/Activities';
 import QRScanner from '@/pages/QRScanner';
-import ServiceHistory from '@/pages/ServiceHistory';
-import ImportExport from '@/pages/ImportExport';
+import Reports from '@/pages/Reports';
+import Administration from '@/pages/Administration';
 import './App.css';
 
 function AppRoutes() {
@@ -16,44 +18,55 @@ function AppRoutes() {
 
   return (
     <Routes>
-      {/* Halaman login - kalau sudah login redirect ke dashboard */}
+      {/* Login */}
       <Route path="/login" element={
         isAuthenticated ? <Navigate to="/" replace /> : <Login />
       } />
 
-      {/* Halaman publik - visitor bisa akses tanpa login */}
+      {/* Publik — guest bisa akses */}
       <Route path="/" element={
-        <ProtectedRoute>
-          <Layout><Dashboard /></Layout>
-        </ProtectedRoute>
+        <ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>
       } />
       <Route path="/map" element={
-        <ProtectedRoute>
-          <Layout><MapView /></Layout>
-        </ProtectedRoute>
-      } />
-      <Route path="/service-history" element={
-        <ProtectedRoute>
-          <Layout><ServiceHistory /></Layout>
-        </ProtectedRoute>
+        <ProtectedRoute><Layout><MapView /></Layout></ProtectedRoute>
       } />
 
-      {/* Halaman khusus - wajib login dengan role tertentu */}
-      <Route path="/units" element={
-        <ProtectedRoute allowedRoles={['admin', 'teknisi']}>
-          <Layout><Units /></Layout>
-        </ProtectedRoute>
+      {/* Aset — semua role bisa lihat, tapi konten dibatasi untuk guest */}
+      <Route path="/assets" element={
+        <ProtectedRoute><Layout><Assets /></Layout></ProtectedRoute>
       } />
+      <Route path="/assets/:id" element={
+        <ProtectedRoute><Layout><UnitDetail /></Layout></ProtectedRoute>
+      } />
+
+      {/* Aktivitas — semua role */}
+      <Route path="/activities" element={
+        <ProtectedRoute><Layout><Activities /></Layout></ProtectedRoute>
+      } />
+
+      {/* QR Scanner — teknisi + admin */}
       <Route path="/qr-scanner" element={
         <ProtectedRoute allowedRoles={['admin', 'teknisi']}>
           <Layout><QRScanner /></Layout>
         </ProtectedRoute>
       } />
-      <Route path="/import-export" element={
-        <ProtectedRoute allowedRoles={['admin', 'teknisi']}>
-          <Layout><ImportExport /></Layout>
+
+      {/* Laporan — semua role */}
+      <Route path="/reports" element={
+        <ProtectedRoute><Layout><Reports /></Layout></ProtectedRoute>
+      } />
+
+      {/* Administrasi — admin only */}
+      <Route path="/admin" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <Layout><Administration /></Layout>
         </ProtectedRoute>
       } />
+
+      {/* Legacy redirects */}
+      <Route path="/units" element={<Navigate to="/assets" replace />} />
+      <Route path="/service-history" element={<Navigate to="/activities" replace />} />
+      <Route path="/import-export" element={<Navigate to="/admin" replace />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
