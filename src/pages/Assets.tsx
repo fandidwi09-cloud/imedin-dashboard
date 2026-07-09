@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
+import { useState, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -50,10 +50,9 @@ function MapClickHandler({onMove}:{onMove:(lat:number,lng:number)=>void}) {
   return null;
 }
 
-export default function Assets({ editMode }: { editMode?: boolean }) {
+export default function Assets() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { id: editId } = useParams<{ id?: string }>();
   const { hasRole, isAuthenticated } = useAuth();
   const isAdmin = hasRole('admin');
   const canEdit = hasRole(['admin','teknisi']);
@@ -76,21 +75,6 @@ export default function Assets({ editMode }: { editMode?: boolean }) {
   const debounce = useRef<ReturnType<typeof setTimeout>|null>(null);
 
   const { units, loading, refresh } = useUnits({ search, province, category, status });
-
-  // Auto-buka form edit kalau dari route /assets/:id/edit
-  useEffect(() => {
-    if (editMode && editId) {
-      unitsApi.getById(editId).then(r => {
-        if (r.success && r.data) {
-          setEditingUnit(r.data);
-          setFormData({...r.data});
-          setAddrSearch(r.data.address || '');
-          setSuggestions([]);
-          setShowForm(true);
-        }
-      });
-    }
-  }, [editMode, editId]);
   const pageSize = 15;
   const totalPages = Math.ceil(units.length/pageSize);
   const paged = units.slice((page-1)*pageSize, page*pageSize);
